@@ -1,0 +1,19 @@
+{
+  "name": "天罡洗髓·焚糖战阙 // CYBER-MARSHAL GLYCO-WARFORGE PRO",
+  "short_name": "天罡战阙",
+  "description": "全天候基层警务战训与抗糖行功离线中枢",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#08090c",
+  "theme_color": "#08090c",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

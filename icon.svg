@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#141824"/>
+      <stop offset="70%" stop-color="#0a0b10"/>
+      <stop offset="100%" stop-color="#040507"/>
+    </radialGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff7a00"/>
+      <stop offset="50%" stop-color="#ffb800"/>
+      <stop offset="100%" stop-color="#00e5ff"/>
+    </linearGradient>
+    <linearGradient id="boltGrad" x1="0%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#05ffa1"/>
+      <stop offset="100%" stop-color="#00e5ff"/>
+    </linearGradient>
+    <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- 纯黑机甲底座 -->
+  <rect width="512" height="512" rx="110" fill="url(#bgGrad)"/>
+  <rect width="496" height="496" x="8" y="8" rx="102" fill="none" stroke="rgba(255, 122, 0, 0.35)" stroke-width="4"/>
+
+  <!-- 八边形战阵力场 -->
+  <polygon points="256,42 430,114 430,340 256,470 82,340 82,114" fill="rgba(20, 24, 34, 0.75)" stroke="url(#shieldGrad)" stroke-width="14" stroke-linejoin="round" filter="url(#neonGlow)"/>
+
+  <!-- 内圈战术脉冲环 -->
+  <circle cx="256" cy="256" r="140" fill="none" stroke="rgba(0, 229, 255, 0.25)" stroke-width="6" stroke-dasharray="16 12"/>
+  <circle cx="256" cy="256" r="115" fill="none" stroke="rgba(5, 255, 161, 0.35)" stroke-width="3"/>
+
+  <!-- 破阵闪电战徽 (天罡雷印) -->
+  <path d="M280,95 L145,275 L245,275 L215,420 L370,230 L270,230 Z" fill="url(#boltGrad)" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" filter="url(#neonGlow)"/>
+
+  <!-- 战术准星角标 -->
+  <line x1="256" y1="56" x2="256" y2="76" stroke="#00e5ff" stroke-width="6" stroke-linecap="round"/>
+  <line x1="256" y1="436" x2="256" y2="456" stroke="#00e5ff" stroke-width="6" stroke-linecap="round"/>
+  <line x1="96" y1="256" x2="116" y2="256" stroke="#00e5ff" stroke-width="6" stroke-linecap="round"/>
+  <line x1="396" y1="256" x2="416" y2="256" stroke="#00e5ff" stroke-width="6" stroke-linecap="round"/>
+</svg>

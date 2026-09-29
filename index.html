@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="color-scheme" content="dark">
     <meta name="theme-color" content="#08090c">
+    
+    <!-- PWA 原生应用与离线化支持 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="天罡战阙">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="apple-touch-icon" href="icon.svg">
+
     <title>天罡洗髓·焚糖战阙 // CYBER-MARSHAL GLYCO-WARFORGE PRO</title>
     <!-- 机甲科技与等宽字体 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -61,7 +71,7 @@
             </div>
         </header>
 
-        <!-- 战术顶栏导航 (核心四大王牌置顶) -->
+        <!-- 战术顶栏导航 (前四大核心置顶) -->
         <div class="tabs-bar" id="topTabsBar"></div>
 
         <!-- 核心分屏主战位 -->
@@ -96,14 +106,14 @@
                             <div class="timer-progress"><div class="timer-progress-fill" id="stretchProgressFill" style="background:linear-gradient(90deg, var(--purple-accent), var(--cyan-accent));"></div></div>
                         </div>
 
-                        <!-- 紧凑控制按钮（靠上置顶） -->
+                        <!-- 紧凑控制按钮 -->
                         <div class="compact-control-bar">
                             <button class="btn btn-primary" id="stretchStartBtn" onclick="toggleStretchTimer()" style="font-size:16px; padding:10px 28px; background:var(--purple-accent);">▶ 开始压腿</button>
                             <button class="btn btn-outline" id="stretchPauseBtn" onclick="pauseStretchTimer()" disabled>⏸ 驻留</button>
                             <button class="btn btn-danger" onclick="stopStretchTimer(false)">⏹ 终止复位</button>
                         </div>
 
-                        <!-- 快捷参数区 (仅 60s 起步) -->
+                        <!-- 快捷参数区 (≥60s) -->
                         <div id="stretchSettingsArea" style="margin-top:10px;"></div>
                     </div>
                 </div>
@@ -116,7 +126,7 @@
                             <span class="badge badge-green" id="timerStatus">就绪 (READY)</span>
                         </div>
 
-                        <!-- 极速组数切换药丸 (默认2组 / 3组 / 4组肌肥大冲顶 / 5组) -->
+                        <!-- 极速组数切换药丸 -->
                         <div class="sets-pill-selector">
                             <span class="pill-label">总循环组数:</span>
                             <button type="button" class="set-chip active" id="chipSet2" onclick="setEccentricQuickSets(2)">2组 (标配)</button>
@@ -226,7 +236,6 @@
                                 <span style="font-size:12px; color:var(--text-muted);">个</span>
                             </div>
 
-                            <!-- 次数直录专属控制按键：记录 vs 放弃 -->
                             <div class="compact-control-bar" style="margin-top:12px;">
                                 <button class="btn btn-secondary" onclick="discardHangReps()" style="flex:1;">🗑️ 放弃 (未达标)</button>
                                 <button class="btn btn-success" onclick="commitHangReps()" style="flex:2; font-size:16px;">💾 记录入册 (有效做功)</button>
@@ -456,7 +465,7 @@
                     </div>
                 </div>
 
-                <!-- 11. 灵枢配置 (完整恢复全表单控件) -->
+                <!-- 11. 灵枢配置 (完整表单，杜绝空指针) -->
                 <div id="settings" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--amber-accent);">
                         <div class="card-header"><span>🎯 天罡战令 · 全局宏观目标</span><span class="badge badge-orange">联动生效</span></div>
@@ -652,5 +661,20 @@
     <script src="js/diary-workbench.js"></script>
     <script src="js/views.js"></script>
     <script src="js/app.js"></script>
+
+    <!-- PWA Service Worker 离线缓存注册核心 -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => {
+                        console.log('✅ 天罡战阙 PWA 离线服务已就绪，作用域:', reg.scope);
+                    })
+                    .catch(err => {
+                        console.error('❌ PWA 离线注册失败:', err);
+                    });
+            });
+        }
+    </script>
 </body>
 </html>
