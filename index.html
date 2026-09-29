@@ -118,7 +118,7 @@
                     </div>
                 </div>
 
-                <!-- 3. 离心慢放 (位置3 - 默认2组，极速组数切换，组间间歇可调/一键跳过) -->
+                <!-- 3. 离心慢放 (位置3 - 默认2组，极速组数/次数切换，组间间歇可调/一键跳过) -->
                 <div id="timer" class="tab-content">
                     <div class="cyber-card compact-tool-card" style="--card-accent: var(--green-accent);">
                         <div class="card-header" style="margin-bottom:4px;">
@@ -140,8 +140,22 @@
                             </div>
                         </div>
 
+                        <!-- 极速每组次数切换药丸 (确保单组做功点数可控) -->
+                        <div class="sets-pill-selector" style="margin-top:4px;">
+                            <span class="pill-label">每组做功次数:</span>
+                            <button type="button" class="set-chip" id="chipEccRep6" onclick="setEccentricQuickReps(6)">6次</button>
+                            <button type="button" class="set-chip active" id="chipEccRep8" onclick="setEccentricQuickReps(8)">8次 (标配)</button>
+                            <button type="button" class="set-chip" id="chipEccRep10" onclick="setEccentricQuickReps(10)">10次 (强化)</button>
+                            <button type="button" class="set-chip" id="chipEccRep12" onclick="setEccentricQuickReps(12)">12次</button>
+                            <div class="stepper-mini">
+                                <button type="button" onclick="stepEccentricReps(-1)">−</button>
+                                <span id="eccRepsDisplay">8</span>
+                                <button type="button" onclick="stepEccentricReps(1)">+</button>
+                            </div>
+                        </div>
+
                         <div class="timer-display compact-timer-display" id="eccTimerDisplayBox">
-                            <div class="timer-set-counter" id="timerSetCounter">第 0 / 2 组</div>
+                            <div class="timer-set-counter" id="timerSetCounter">第 0 / 2 组 (每组 8 次)</div>
                             <div class="timer-phase" id="phaseDisplay">战法就绪</div>
                             <div class="timer-clock" id="timerClock">00:00</div>
                             <div class="timer-progress"><div class="timer-progress-fill" id="timerProgressFill"></div></div>
@@ -169,20 +183,21 @@
                         <div class="row" style="margin-top:8px;">
                             <div class="flex-1">
                                 <label>盲听语音</label>
-                                <select id="voiceEnabled">
+                                <select id="voiceEnabled" onchange="syncTimerInputs()">
                                     <option value="true">开启 (提前200ms)</option>
                                     <option value="false">静默 (MUTE)</option>
                                 </select>
                             </div>
                             <div class="flex-1">
-                                <label>单组慢下秒数</label>
+                                <label>离心慢下 (秒)</label>
                                 <input type="number" id="timerDownInput" value="4.0" step="0.5" min="1" onchange="syncTimerInputs()">
                             </div>
                             <div class="flex-1">
-                                <label>撑起爆发秒数</label>
+                                <label>撑起爆发 (秒)</label>
                                 <input type="number" id="timerUpInput" value="1.0" step="0.5" min="0.5" onchange="syncTimerInputs()">
                             </div>
                             <input type="hidden" id="timerSetsInput" value="2">
+                            <input type="hidden" id="timerRepsInput" value="8">
                         </div>
                     </div>
                 </div>
@@ -527,7 +542,7 @@
 
             </div>
 
-            <!-- 右侧机甲座舱 (全新重构：视窗全屏拖拽 + 悬浮赛博 HUD 控制坞) -->
+            <!-- 右侧机甲座舱 (视窗全屏拖拽 + 悬浮赛博 HUD 控制坞) -->
             <div class="right-mecha-dock" id="rightMechaDock">
                 <div class="tactical-grid"></div>
                 <div class="crosshair ch-tl"></div>
@@ -547,7 +562,7 @@
                     <div class="mecha-img-wrapper" id="mechaWrapper"></div>
                 </div>
 
-                <!-- 底部机甲 HUD 悬浮控制坞 (杜绝错位未渲染) -->
+                <!-- 底部机甲 HUD 悬浮控制坞 -->
                 <div class="mecha-hud-toolbar" id="mechaHudToolbar">
                     <button type="button" class="mecha-hud-btn" onclick="zoomHero(0.2)" title="放大视角">🔍＋</button>
                     <button type="button" class="mecha-hud-btn" onclick="zoomHero(-0.2)" title="缩小视角">🔍−</button>
