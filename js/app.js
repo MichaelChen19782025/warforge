@@ -1,34 +1,31 @@
 // ================================================================
-//  app.js: 全局应用总调度入口
+//  app.js: 全局启动总控、数据自愈、字号初始化与事件监听
 // ================================================================
 
-function switchTab(tabId) {
+function setupTabs() {
+    // 基础选项卡点击由 quick-action 动态渲染统一托管
+}
+
+function switchTab(t) {
     if (typeof hideHudTooltip === 'function') hideHudTooltip();
 
-    // 更新按钮高亮
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tabId);
-    });
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    const targetBtn = document.querySelector(`.tab-btn[data-tab="${t}"]`);
+    if (targetBtn) targetBtn.classList.add('active');
 
-    // 切换内容区域
-    document.querySelectorAll('.tab-content').forEach(c => {
-        c.classList.remove('active');
-    });
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    const targetContent = document.getElementById(t);
+    if (targetContent) targetContent.classList.add('active');
 
-    const target = document.getElementById(tabId);
-    if (target) target.classList.add('active');
+    document.body.classList.toggle('diary-wide', t === 'diary');
 
-    // 日记标签页宽屏自适应
-    document.body.classList.toggle('diary-wide', tabId === 'diary');
+    // 针对指定面板触发重新排版
+    if (t === 'analysis' && typeof refreshPromptData === 'function') refreshPromptData();
+    if (t === 'workout_deck' && typeof renderWorkoutQueue === 'function') renderWorkoutQueue();
+    if (t === 'action_quick' && typeof renderActionQuickPanel === 'function') renderActionQuickPanel();
 
-    // 页面特定刷新
-    if (tabId === 'workout_deck' && typeof renderWorkoutQueue === 'function') renderWorkoutQueue();
-    if (tabId === 'action_quick' && typeof renderActionQuickPanel === 'function') renderActionQuickPanel();
-    if (tabId === 'analysis' && typeof refreshPromptData === 'function') refreshPromptData();
-    if (tabId === 'stretch_timer' && typeof renderStretchSettings === 'function') renderStretchSettings();
-
-    const deck = document.getElementById('leftDeckPane');
-    if (deck) deck.scrollTop = 0;
+    const d = document.getElementById('leftDeckPane');
+    if (d) d.scrollTop = 0;
 }
 
 function renderAll() {
@@ -48,7 +45,6 @@ async function init() {
     try {
         if (typeof initDexieStorage === 'function') initDexieStorage();
 
-        // 载入 LocalStorage 数据并与状态模板合并
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
             try {
@@ -67,45 +63,60 @@ async function init() {
                     arsenal: parsed.arsenal || null
                 };
 
-                // 确保核心默认值存在
-                if (!data.settings.eccentricDefaultSets) data.settings.eccentricDefaultSets = 10;
-                if (!data.settings.stretchDefaultDuration) data.settings.stretchDefaultDuration = 60;
-                if (!data.settings.stretchRestDuration) data.settings.stretchRestDuration = 30;
+                // 数据自愈升级：如果旧数据默认离心次数还是8，或未设定，平滑升级为10次
+                if (data.settings.eccentricDefaultReps === undefined || data.settings.eccentricDefaultReps === 8) {
+                    data.settings.eccentricDefaultReps = 10;
+                }
+                if (!data.settings.eccentricDefaultSets) {
+                    data.settings.eccentricDefaultSets = 2;
+                }
+                if (!data.settings.stretchDefaultDuration) {
+                    data.settings.stretchDefaultDuration = 60;
+                }
+                if (!data.settings.stretchSwitchRestSec) {
+                    data.settings.stretchSwitchRestSec = 30;
+                }
 
+                if (Array.isArray(data.workoutQueue)) {
+                    data.workoutQueue.forEach(item => {
+                        if (item.status === 'running') {
+                            item.status = 'idle';
+                            item.startTime = '';
+                            item.endTime = '';
+                        }
+                    });
+                }
             } catch (e) {
-                console.error('配置载入异常，采用基线配置', e);
+                console.error('配置恢复异常，使用基准方案', e);
             }
         }
 
+        // 清理旧空行
         if (typeof migrateBlankLinesInData === 'function') migrateBlankLinesInData();
+
         saveData();
-
         renderAll();
-        if (typeof renderTopTabs === 'function') renderTopTabs();
-        if (typeof applyReadingTypography === 'function') applyReadingTypography();
 
-        // 应用用户字号偏好，默认使用 锻炼计划.html 的大字体视觉
+        // 顶栏标签构建
+        if (typeof renderTopTabs === 'function') renderTopTabs();
+
+        // 字号初始化：默认注入大字号 (+4)，解决偏小问题
         const savedDelta = localStorage.getItem('user_font_delta_pref');
         if (typeof applyFontDelta === 'function') {
             applyFontDelta(savedDelta !== null ? parseFloat(savedDelta) : 4);
         }
 
         if (typeof startPoliceRealtimeClock === 'function') startPoliceRealtimeClock();
-        if (typeof initHeroViewer === 'function') await initHeroViewer();
         if (typeof initTacticalHudTooltips === 'function') initTacticalHudTooltips();
-        if (typeof applyPresetRange === 'function') applyPresetRange(7);
         if (typeof renderAiReportList === 'function') renderAiReportList();
         if (typeof renderDutyStatus === 'function') renderDutyStatus();
 
+        // 默认定位到慢跑
+        switchTab('action_quick');
+
     } catch (err) {
-        console.error('初始化发生异常:', err);
+        console.error('App 初始化严重故障:', err);
     }
 }
-
-window.addEventListener('beforeunload', () => {
-    try {
-        if (typeof workbenchAutosaveNow === 'function') workbenchAutosaveNow();
-    } catch (e) {}
-});
 
 document.addEventListener('DOMContentLoaded', init);

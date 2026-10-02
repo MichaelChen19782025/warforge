@@ -1,6 +1,25 @@
 // ================================================================
-//  utils.js: 基础排版、时间戳、HUD浮层、轻量Markdown与Toast工具库
+//  utils.js: 基础排版、时间戳、HUD浮层、全局TTS语音、Markdown与Toast工具库
 // ================================================================
+
+// 全局高敏 TTS 快速语音播报（统一防崩溃与统一语速调谐）
+function speakFast(text) {
+    if (!('speechSynthesis' in window)) return;
+    const voiceSelect = document.getElementById('voiceEnabled');
+    if (voiceSelect && voiceSelect.value === 'false') return;
+
+    try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'zh-CN';
+        u.rate = 1.35;
+        u.pitch = 1.05;
+        window.speechSynthesis.speak(u);
+    } catch (e) {
+        console.warn('TTS error:', e);
+    }
+}
+window.speakFast = speakFast;
 
 // 获取格式化时间戳 YYYY-MM-DD HH:mm:ss
 function getFullTimestamp(d = new Date()) {
