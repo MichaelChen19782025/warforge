@@ -1,137 +1,298 @@
-// ================================================================
-//  pnf-timer.js: 压腿舒筋战钟（严格 60 秒起步，倒计时/秒表/PNF全语音）
-// ================================================================
+/**
+ * 压腿舒筋 · 极意拉伸战钟 (PRO)
+ * 核心修复与升级：
+ * 1. 彻底解决点击无反应的问题（精准匹配 Tab 与 DOM id）；
+ * 2. 全程逐秒语音读秒：做功时每一秒朗读数字，不用看手机闭眼即可盲听掌控；
+ * 3. 换边间隔时长（组间休整）支持自由调整，且修改后自动持久化保存为下一次的默认值！
+ * 4. 自动左腿 -> 换边休整 -> 右腿循环，时间到自动封存入册。
+ */
 
-let stretchMode = 'countdown'; // 'countdown' | 'stopwatch' | 'pnf'
-let stretchState = 'idle'; // 'idle' | 'running' | 'paused'
-let stretchSeconds = 60; // 默认 60 秒起步
-let stretchTarget = 60;
-let stretchInterval = null;
+let stretchSubMode = 'flow'; // 'flow' (双腿周天) | 'countdown' (单侧倒计时) | 'stopwatch' (秒表)
+let stretchRunning = false;
+let stretchPaused = false;
+let stretchTimerInterval = null;
 
-// PNF 专用状态
-let pnfSteps = [];
-let pnfStepIndex = 0;
+// 从 settings 读取持久化默认值
+let stretchTargetDuration = 60; // 单侧拉伸时长 (默认60s)
+let stretchRestDuration = 30;   // 换边间隔休整时长 (默认30s)
 
-function switchStretchMode(mode) {
-    if (stretchState !== 'idle') stopStretchTimer(false);
-    stretchMode = mode;
+// 周天循环调度状态
+let stretchFlowSteps = [];
+let stretchFlowStepIndex = 0;
+let stretchCurrentStepRemain = 0;
 
-    document.getElementById('btnStretchModeCountdown')?.classList.toggle('active', mode === 'countdown');
-    document.getElementById('btnStretchModeStopwatch')?.classList.toggle('active', mode === 'stopwatch');
-    document.getElementById('btnStretchModePnf')?.classList.toggle('active', mode === 'pnf');
+function initStretchTimerState() {
+    stretchTargetDuration = data?.settings?.stretchDefaultDuration || 60;
+    stretchRestDuration = data?.settings?.stretchRestDuration || 30;
+    renderStretchSettings();
+    updateStretchClockDisplay(stretchTargetDuration);
+}
 
-    const clock = document.getElementById('stretchTimerClock');
-    const phase = document.getElementById('stretchPhaseDisplay');
-    const counter = document.getElementById('stretchCycleCounter');
+// 切换子模式
+function switchStretchSubMode(mode) {
+    if (stretchRunning) stopStretchTimer(false);
+    stretchSubMode = mode;
 
-    if (mode === 'countdown') {
-        stretchTarget = Math.max(60, stretchTarget);
-        stretchSeconds = stretchTarget;
-        if (clock) clock.textContent = formatStretchTime(stretchSeconds);
-        if (phase) phase.textContent = `目标倒计时 · 深度拉伸 (${stretchTarget}s)`;
-        if (counter) counter.textContent = '单侧目标压腿 (≥60s起步)';
-        renderStretchCountdownSettings();
-    } else if (mode === 'stopwatch') {
-        stretchSeconds = 0;
-        if (clock) clock.textContent = "00:00";
-        if (phase) phase.textContent = "正向秒表 · 自由舒缓压腿";
-        if (counter) counter.textContent = '正向计时无上限';
-        document.getElementById('stretchSettingsArea').innerHTML = '';
+    ['flow', 'countdown', 'stopwatch'].forEach(m => {
+        const btn = document.getElementById(`btnStretchMode${m.charAt(0).toUpperCase() + m.slice(1)}`);
+        if (btn) btn.classList.toggle('active', m === mode);
+    });
+
+    renderStretchSettings();
+
+    const phaseEl = document.getElementById('stretchPhaseDisplay');
+    const counterEl = document.getElementById('stretchCycleCounter');
+
+    if (mode === 'flow') {
+        if (phaseEl) phaseEl.textContent = '双腿周天循环 · 闭眼听令';
+        if (counterEl) counterEl.textContent = `单侧 ${stretchTargetDuration}s | 换边间隔 ${stretchRestDuration}s`;
+        updateStretchClockDisplay(stretchTargetDuration);
+    } else if (mode === 'countdown') {
+        if (phaseEl) phaseEl.textContent = `单侧目标倒计时 · ${stretchTargetDuration}s`;
+        if (counterEl) counterEl.textContent = '全程逐秒读秒 · 深度牵拉';
+        updateStretchClockDisplay(stretchTargetDuration);
     } else {
-        if (phase) phase.textContent = "闭眼就位 · 听令而动";
-        if (counter) counter.textContent = '双腿PNF周天';
-        renderPnfSettings();
+        if (phaseEl) phaseEl.textContent = '自由正向秒表';
+        if (counterEl) counterEl.textContent = '正向计时无上限';
+        updateStretchClockDisplay(0);
     }
 }
 
-function formatStretchTime(sec) {
-    const m = String(Math.floor(sec / 60)).padStart(2, '0');
-    const s = String(sec % 60).padStart(2, '0');
-    return `${m}:${s}`;
-}
+// 调整单侧时长，并自动保存为下一次默认值！
+function setStretchTargetDuration(sec) {
+    const val = Math.max(30, parseInt(sec) || 60);
+    stretchTargetDuration = val;
 
-function toggleStretchTimer() {
-    if (stretchState === 'idle') {
-        startStretchTimer();
-    } else if (stretchState === 'running') {
-        pauseStretchTimer();
-    } else {
-        resumeStretchTimer();
+    if (data && data.settings) {
+        data.settings.stretchDefaultDuration = val;
+        saveData();
+    }
+
+    renderStretchSettings();
+    if (!stretchRunning && stretchSubMode !== 'stopwatch') {
+        updateStretchClockDisplay(val);
+    }
+    if (typeof showToast === 'function') {
+        showToast(`已将单侧时长设为 ${val}s (已存为默认)`);
     }
 }
 
-function startStretchTimer() {
-    stretchState = 'running';
-    updateStretchButtonUI(true);
+// 调整换边间隔时长，并自动保存为下一次默认值！
+function setStretchRestDuration(sec) {
+    const val = Math.max(5, parseInt(sec) || 30);
+    stretchRestDuration = val;
 
-    if (stretchMode === 'pnf') {
-        startPnfFlow();
+    if (data && data.settings) {
+        data.settings.stretchRestDuration = val;
+        saveData();
+    }
+
+    renderStretchSettings();
+    const counterEl = document.getElementById('stretchCycleCounter');
+    if (counterEl && stretchSubMode === 'flow') {
+        counterEl.textContent = `单侧 ${stretchTargetDuration}s | 换边间隔 ${val}s`;
+    }
+    if (typeof showToast === 'function') {
+        showToast(`已将换边间隔设为 ${val}s (已存为默认)`);
+    }
+}
+
+// 渲染参数调节条
+function renderStretchSettings() {
+    const area = document.getElementById('stretchSettingsArea');
+    if (!area) return;
+
+    if (stretchSubMode === 'stopwatch') {
+        area.innerHTML = `<div style="font-size:12px; color:var(--text-muted); text-align:center;">正向秒表模式：闭眼拉伸，每秒精准播报。</div>`;
         return;
     }
 
-    speakFast(stretchMode === 'countdown' ? `开始压腿，设定${stretchTarget}秒，匀速吐气，拉长筋膜！` : "开始自由压腿，秒表启动！");
+    const durPresets = [45, 60, 75, 90, 120];
+    const restPresets = [15, 20, 30, 45, 60];
 
-    clearInterval(stretchInterval);
-    stretchInterval = setInterval(() => {
-        const clock = document.getElementById('stretchTimerClock');
-        const fill = document.getElementById('stretchProgressFill');
+    area.innerHTML = `
+        <div class="stretch-setting-row">
+            <span style="font-size:12.5px; color:var(--text-muted); font-weight:bold;">⏱️ 单侧压腿时长:</span>
+            <div class="chip-preset-row" style="margin:0;">
+                ${durPresets.map(s => `
+                    <button type="button" class="preset-chip ${stretchTargetDuration === s ? 'active' : ''}"
+                            onclick="setStretchTargetDuration(`${s}`)">${s}s</button>
+                `).join('')}
+            </div>
+        </div>
+        ${stretchSubMode === 'flow' ? `
+            <div class="stretch-setting-row">
+                <span style="font-size:12.5px; color:var(--amber-accent); font-weight:bold;">☕ 换边间隔休整 (存为默认):</span>
+                <div class="chip-preset-row" style="margin:0;">
+                    ${restPresets.map(r => `
+                        <button type="button" class="preset-chip ${stretchRestDuration === r ? 'active' : ''}"
+                                style="${stretchRestDuration === r ? 'background:var(--amber-accent); border-color:var(--amber-accent);' : ''}"
+                                onclick="setStretchRestDuration(${r})">${r}s</button>
+                    `).join('')}
+                    <input type="number" value="${stretchRestDuration}" min="5" max="180" step="5"
+                           style="width:58px; text-align:center; font-size:12px; padding:2px 4px; font-weight:bold; color:var(--amber-accent);"
+                           onchange="setStretchRestDuration(this.value)">
+                    <span style="font-size:11px; color:var(--text-muted);">秒</span>
+                </div>
+            </div>
+        ` : ''}
+    `;
+}
 
-        if (stretchMode === 'countdown') {
-            stretchSeconds--;
-            if (clock) clock.textContent = formatStretchTime(Math.max(0, stretchSeconds));
-            if (fill) fill.style.width = `${((stretchTarget - stretchSeconds) / stretchTarget) * 100}%`;
+function updateStretchClockDisplay(sec) {
+    const clockEl = document.getElementById('stretchTimerClock');
+    if (!clockEl) return;
+    const m = String(Math.floor(sec / 60)).padStart(2, '0');
+    const s = String(sec % 60).padStart(2, '0');
+    clockEl.textContent = `${m}:${s}`;
+}
 
-            if (stretchSeconds <= 3 && stretchSeconds > 0) {
-                speakFast(String(stretchSeconds));
-            } else if (stretchSeconds === 30) {
-                speakFast("已过半，保持膝盖微屈勿憋气");
-            } else if (stretchSeconds === 10) {
-                speakFast("最后10秒，微沉加深！");
-            }
+function toggleStretchTimer() {
+    if (!stretchRunning) {
+        startStretchTimer();
+    } else {
+        pauseStretchTimer();
+    }
+}
 
-            if (stretchSeconds <= 0) {
+// 语音播报
+function speakStretch(text, rate = 1.25) {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'zh-CN';
+    u.rate = rate;
+    u.pitch = 1.05;
+    window.speechSynthesis.speak(u);
+}
+
+// 启动压腿战钟
+function startStretchTimer() {
+    stretchRunning = true;
+    stretchPaused = false;
+    updateStretchButtonUI(true);
+
+    if (stretchSubMode === 'flow') {
+        buildStretchFlowSchedule();
+        runStretchFlowStep();
+        return;
+    }
+
+    // 单侧倒计时或秒表
+    let currentSec = (stretchSubMode === 'countdown') ? stretchTargetDuration : 0;
+    speakStretch(stretchSubMode === 'countdown' ? `开始压腿，设定${stretchTargetDuration}秒，全程读秒，放松哈气！` : '秒表开始！');
+
+    clearInterval(stretchTimerInterval);
+    stretchTimerInterval = setInterval(() => {
+        if (stretchSubMode === 'countdown') {
+            currentSec--;
+            updateStretchClockDisplay(Math.max(0, currentSec));
+            const fill = document.getElementById('stretchProgressFill');
+            if (fill) fill.style.width = `${((stretchTargetDuration - currentSec) / stretchTargetDuration) * 100}%`;
+
+            // 核心：全程逐秒读秒！
+            if (currentSec > 0) {
+                speakStretch(String(currentSec));
+            } else {
                 stopStretchTimer(true);
             }
         } else {
-            stretchSeconds++;
-            if (clock) clock.textContent = formatStretchTime(stretchSeconds);
-            if (stretchSeconds === 60) {
-                speakFast("已满60秒基准，做功有效！");
-            } else if (stretchSeconds > 60 && stretchSeconds % 30 === 0) {
-                speakFast(`${stretchSeconds}秒`);
+            currentSec++;
+            updateStretchClockDisplay(currentSec);
+            // 秒表全程每秒朗读
+            speakStretch(String(currentSec));
+        }
+    }, 1000);
+}
+
+// 构建双腿周天执行队列
+function buildStretchFlowSchedule() {
+    stretchFlowSteps = [
+        { title: '战前就位准备', cue: '左腿在前，10秒就位准备', duration: 10, isPrep: true },
+        { title: '左腿 · 深度拉伸', cue: '左腿开始拉伸，匀速吐气，拉长筋膜', duration: stretchTargetDuration, isWork: true, side: '左腿' },
+        { title: `换边休整 (${stretchRestDuration}s)`, cue: `左腿收功！缓慢收腿抖腿，换边休整${stretchRestDuration}秒`, duration: stretchRestDuration, isRest: true },
+        { title: '右腿 · 深度拉伸', cue: '右腿开始拉伸，全身放松，顺势下沉', duration: stretchTargetDuration, isWork: true, side: '右腿' }
+    ];
+    stretchFlowStepIndex = 0;
+}
+
+// 执行周天当前小节（关键：做功阶段全程每秒报数！）
+function runStretchFlowStep() {
+    if (stretchFlowStepIndex >= stretchFlowSteps.length) {
+        stopStretchTimer(true);
+        return;
+    }
+
+    const cur = stretchFlowSteps[stretchFlowStepIndex];
+    stretchCurrentStepRemain = cur.duration;
+
+    const phaseEl = document.getElementById('stretchPhaseDisplay');
+    const counterEl = document.getElementById('stretchCycleCounter');
+    const fill = document.getElementById('stretchProgressFill');
+
+    if (phaseEl) phaseEl.textContent = cur.title;
+    if (counterEl) counterEl.textContent = `当前进度: 第 ${stretchFlowStepIndex + 1} / ${stretchFlowSteps.length} 节`;
+    updateStretchClockDisplay(stretchCurrentStepRemain);
+
+    speakStretch(cur.cue);
+
+    clearInterval(stretchTimerInterval);
+    stretchTimerInterval = setInterval(() => {
+        stretchCurrentStepRemain--;
+        updateStretchClockDisplay(Math.max(0, stretchCurrentStepRemain));
+
+        if (fill) {
+            fill.style.width = `${((cur.duration - stretchCurrentStepRemain) / cur.duration) * 100}%`;
+        }
+
+        // 做功期间：全程逐秒报数！
+        if (cur.isWork && stretchCurrentStepRemain > 0) {
+            speakStretch(String(stretchCurrentStepRemain));
+        }
+        // 间隔休整期间：最后5秒预警，最后3秒倒数
+        else if (cur.isRest) {
+            if (stretchCurrentStepRemain === 5) {
+                speakStretch('准备，右腿就位！');
+            } else if (stretchCurrentStepRemain <= 3 && stretchCurrentStepRemain > 0) {
+                speakStretch(String(stretchCurrentStepRemain));
             }
+        }
+        // 就位准备期间：倒数最后3秒
+        else if (cur.isPrep && stretchCurrentStepRemain <= 3 && stretchCurrentStepRemain > 0) {
+            speakStretch(String(stretchCurrentStepRemain));
+        }
+
+        if (stretchCurrentStepRemain <= 0) {
+            clearInterval(stretchTimerInterval);
+            stretchFlowStepIndex++;
+            runStretchFlowStep();
         }
     }, 1000);
 }
 
 function pauseStretchTimer() {
-    stretchState = 'paused';
-    clearInterval(stretchInterval);
+    stretchRunning = false;
+    stretchPaused = true;
+    clearInterval(stretchTimerInterval);
+    updateStretchButtonUI(false);
     const btn = document.getElementById('stretchStartBtn');
-    if (btn) btn.innerText = "▶ 恢复";
-}
-
-function resumeStretchTimer() {
-    stretchState = 'running';
-    const btn = document.getElementById('stretchStartBtn');
-    if (btn) btn.innerText = "⏸ 暂停";
-    startStretchTimer();
+    if (btn) btn.textContent = '▶ 恢复压腿';
 }
 
 function stopStretchTimer(isAutoDone = false) {
-    clearInterval(stretchInterval);
+    clearInterval(stretchTimerInterval);
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
     const duty = getDutyShiftInfo();
-    const durSec = stretchMode === 'countdown' ? stretchTarget : stretchSeconds;
+    const durSec = (stretchSubMode === 'flow') ? (stretchTargetDuration * 2) : stretchTargetDuration;
 
-    if (durSec >= 60 && isAutoDone) {
+    if (isAutoDone) {
         const autoLog = {
             id: 'l_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
             date: duty.dutyDateStr,
             type: '压腿',
-            sets: 1,
-            reps: `${durSec}s`,
+            sets: stretchSubMode === 'flow' ? 2 : 1,
+            reps: stretchSubMode === 'flow' ? `${stretchTargetDuration}s,${stretchTargetDuration}s` : `${durSec}s`,
             total: durSec,
             isAerobic: false,
             isIsometric: true,
@@ -144,115 +305,38 @@ function stopStretchTimer(isAutoDone = false) {
             downSec: 0,
             upSec: 0,
             tutSeconds: durSec,
-            note: `压腿深度舒筋：完成 ${durSec} 秒（≥60s基准破障）。`,
+            note: `压腿深度舒筋收功：双腿做功 ${durSec} 秒（间隔休整 ${stretchRestDuration}s）。`,
             createdAt: new Date().toISOString()
         };
 
         data.logs.push(autoLog);
-
-        // 联动销项：移除出征台中对应的压腿动作
-        data.workoutQueue = data.workoutQueue.filter(x => !(x.actionId === 'act_pnf_stretch' || x.name.includes('压腿') || x.name.includes('拉伸')));
-
+        data.workoutQueue = data.workoutQueue.filter(x => !(x.actionId === 'act_pnf_stretch' || x.name.includes('压腿')));
         saveData();
         renderAll();
 
-        speakFast(`压腿收功，有效做功${durSec}秒，战功已自动封存！`);
-        showToast(`🎉 压腿（${durSec}秒）已成功入册！`);
-    } else if (!isAutoDone && durSec < 60) {
-        showToast("⚠️ 本次压腿未达 60 秒基准，未入册");
+        speakStretch(`压腿圆满收功，累计做功${durSec}秒，战功已自动封存入册！`);
+        if (typeof showToast === 'function') {
+            showToast(`🎉 压腿（${durSec}秒）已成功入册！`);
+        }
     }
 
-    stretchState = 'idle';
+    stretchRunning = false;
+    stretchPaused = false;
     updateStretchButtonUI(false);
-    switchStretchMode(stretchMode);
+    updateStretchClockDisplay(stretchTargetDuration);
+    const fill = document.getElementById('stretchProgressFill');
+    if (fill) fill.style.width = '0%';
 }
 
 function updateStretchButtonUI(isRunning) {
     const btn = document.getElementById('stretchStartBtn');
-    const pauseBtn = document.getElementById('stretchPauseBtn');
     if (btn) {
-        btn.innerText = isRunning ? "⏸ 暂停" : "▶ 开始压腿";
+        btn.textContent = isRunning ? "⏸ 暂停压腿" : "▶ 开始压腿 (留10s准备)";
         btn.className = isRunning ? "btn btn-danger" : "btn btn-primary";
+        btn.style.background = isRunning ? "" : "var(--purple-accent)";
     }
-    if (pauseBtn) pauseBtn.disabled = !isRunning;
 }
 
-function setStretchCountdownSec(sec) {
-    const val = Math.max(60, parseInt(sec) || 60);
-    stretchTarget = val;
-    stretchSeconds = val;
-    const clock = document.getElementById('stretchTimerClock');
-    if (clock) clock.textContent = formatStretchTime(val);
-    renderStretchCountdownSettings();
-}
-
-function renderStretchCountdownSettings() {
-    const container = document.getElementById('stretchSettingsArea');
-    if (!container) return;
-    const presets = [60, 75, 90, 120, 180];
-    container.innerHTML = `
-        <div style="display:flex; justify-content:center; align-items:center; gap:6px; flex-wrap:wrap;">
-            <span style="font-size:11px; color:var(--text-muted);">设定时长:</span>
-            ${presets.map(s => `
-                <button type="button" class="preset-chip ${stretchTarget === s ? 'active' : ''}" onclick="setStretchCountdownSec(${s})">${s}秒</button>
-            `).join('')}
-            <input type="number" value="${stretchTarget}" min="60" max="600" step="15" onchange="setStretchCountdownSec(this.value)"
-                   style="width:60px; padding:2px 4px; font-size:11px; text-align:center; color:var(--purple-accent); font-weight:bold;">
-            <span style="font-size:11px; color:var(--text-dim);">秒</span>
-        </div>
-    `;
-}
-
-function renderPnfSettings() {
-    const container = document.getElementById('stretchSettingsArea');
-    if (!container) return;
-    container.innerHTML = `
-        <div style="font-size:11px; color:var(--text-muted); line-height:1.4;">
-            💡 <strong>闭眼听令口诀</strong>：到位牵拉 ➔ 听到"发力"脚跟下踩对抗 ➔ 听到"下沉"彻底卸力加深 ➔ 换边休整。
-        </div>
-    `;
-}
-
-function startPnfFlow() {
-    pnfSteps = [
-        { title: '左腿 · 初阶到位牵拉', cue: '左腿在前，初阶到位牵拉，深长吐气', duration: 15 },
-        { title: '左腿 · 第一次等长发力', cue: '前脚跟下踩发力对抗，严禁憋气，吐气！', duration: 7, count: true },
-        { title: '左腿 · 第一次深度下沉', cue: '彻底卸力，深层下沉加深！', duration: 25 },
-        { title: '缓慢收腿 · 抖腿换边', cue: '缓慢收腿，深呼吸拍打大腿，换右腿在前', duration: 15 },
-        { title: '右腿 · 初阶到位牵拉', cue: '右腿在前，初阶轻柔牵拉到位', duration: 15 },
-        { title: '右腿 · 等长发力对抗', cue: '脚跟下踩发力对抗，持续哈气！', duration: 7, count: true },
-        { title: '右腿 · 极致下沉加深', cue: '全身放松，顺势沉到极限！', duration: 25 }
-    ];
-    pnfStepIndex = 0;
-    runPnfStep();
-}
-
-function runPnfStep() {
-    if (pnfStepIndex >= pnfSteps.length) {
-        stopStretchTimer(true);
-        return;
-    }
-    const step = pnfSteps[pnfStepIndex];
-    let rem = step.duration;
-    speakFast(step.cue);
-
-    const phase = document.getElementById('stretchPhaseDisplay');
-    const clock = document.getElementById('stretchTimerClock');
-    const counter = document.getElementById('stretchCycleCounter');
-
-    if (phase) phase.textContent = step.title;
-    if (counter) counter.textContent = `第 ${pnfStepIndex + 1} / ${pnfSteps.length} 节`;
-
-    clearInterval(stretchInterval);
-    stretchInterval = setInterval(() => {
-        rem--;
-        if (clock) clock.textContent = formatStretchTime(rem);
-        if (step.count && rem <= 3 && rem > 0) speakFast(String(rem));
-
-        if (rem <= 0) {
-            clearInterval(stretchInterval);
-            pnfStepIndex++;
-            runPnfStep();
-        }
-    }, 1000);
-}
+document.addEventListener('DOMContentLoaded', () => {
+    initStretchTimerState();
+});

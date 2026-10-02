@@ -1,81 +1,40 @@
 /**
  * 天罡洗髓 · 引体全能舱 & 极限悬挂战钟 (PRO)
- * 具备：次数直录 / 极限界限秒表 / 目标倒计时
- * 优化特性：
- * 1. 悬挂做功全程每秒微频 Tick 音，告别死寂；
- * 2. 秒表模式每 5 秒（5s、10s、15s、20s...）精准语音报时与破境提示；
- * 3. 倒计时模式进入最后 10 秒开启全量逐秒（9、8、7、6...）盲听倒数；
- * 4. 完整的就位准备（5/10/15/20s）与战报结算。
+ * 核心优化特性（参考《IRON GRIP 悬挂训练助手》）：
+ * 1. 读秒功能：全程每一秒都进行语音朗读（秒表正数 1, 2, 3... 倒计时逐秒倒数 30, 29, 28...）；
+ * 2. 战前就位准备：全程逐秒报数（10, 9, 8... 3, 2, 1），0 时“开始！”；
+ * 3. 拍击大圆盘立即停止结算战报，刷新 PB 纪录；
+ * 4. 支持次数直录快速打卡。
  */
 
 (function () {
     const hangState = {
         variant: 'standard', // 'standard' | 'wide' | 'hang'
-        mode: 'reps',        // 'reps' | 'stopwatch' | 'countdown'
-        status: 'ready',     // 'ready' | 'prep' | 'running' | 'paused'
+        mode: 'stopwatch',   // 'stopwatch' | 'countdown' | 'reps'
+        status: 'idle',      // 'idle' | 'prep' | 'running'
         prepDuration: 10,
         countdownTarget: 30,
-        elapsedSeconds: 0,
-        timeRemaining: 0,
+        currentTime: 0,
         intervalId: null,
-        lastTickTimestamp: 0,
         personalBest: 0,
         repsCount: 8
     };
 
-    // Web Audio 雷达音效
-    let audioCtx = null;
-    function getAudioCtx() {
-        if (!audioCtx) {
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if (AudioContextClass) audioCtx = new AudioContextClass();
-        }
-        if (audioCtx && audioCtx.state === 'suspended') {
-            audioCtx.resume();
-        }
-        return audioCtx;
-    }
-
-    function playBeep(freq = 800, duration = 0.05, type = 'sine', volume = 0.12) {
-        try {
-            const ctx = getAudioCtx();
-            if (!ctx) return;
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = type;
-            osc.frequency.setValueAtTime(freq, ctx.currentTime);
-            gain.gain.setValueAtTime(volume, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + duration);
-        } catch (e) { }
-    }
-
-    function speakVoice(text) {
-        if (typeof window.speak === 'function') {
-            window.speak(text);
-            return;
-        }
-        if ('speechSynthesis' in window) {
-            try {
-                window.speechSynthesis.cancel();
-                const utter = new SpeechSynthesisUtterance(text);
-                utter.lang = 'zh-CN';
-                utter.rate = 1.1;
-                utter.pitch = 1.0;
-                window.speechSynthesis.speak(utter);
-            } catch (e) {
-                console.warn('TTS error:', e);
-            }
-        }
+    // 语音朗读引擎 (完全对齐 IRON GRIP)
+    function speakVoice(text, rate = 1.25) {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'zh-CN';
+        utter.rate = rate;
+        utter.pitch = 1.05;
+        window.speechSynthesis.speak(utter);
     }
 
     // 本地 PB 加载与持久化
     function loadPb() {
-        const stored = localStorage.getItem(`hang_pb_${hangState.variant}`);
-        hangState.personalBest = stored ? parseInt(stored) : 0;
+        const stored = localStorage.getItem(`hang_pb_${hangState.variant}`) || (data?.settings?.hangBestRecord || 0);
+        hangState.personalBest = parseInt(stored) || 0;
         updatePbDisplay();
     }
 
@@ -83,6 +42,10 @@
         if (newScore > hangState.personalBest) {
             hangState.personalBest = newScore;
             localStorage.setItem(`hang_pb_${hangState.variant}`, newScore);
+            if (data && data.settings) {
+                data.settings.hangBestRecord = newScore;
+                saveData();
+            }
             updatePbDisplay();
             return true;
         }
@@ -92,11 +55,11 @@
     function updatePbDisplay() {
         const pbEl = document.getElementById('hangPbDisplay');
         if (pbEl) {
-            pbEl.textContent = `🏆 PB: ${hangState.personalBest}s`;
+            pbEl.textContent = `🏆 最佳悬挂: ${hangState.personalBest}s`;
         }
     }
 
-    // 动作变式切换
+    // 变式切换
     window.switchHangVariant = function (variant) {
         hangState.variant = variant;
         ['standard', 'wide', 'hang'].forEach(v => {
@@ -106,10 +69,12 @@
         loadPb();
     };
 
-    // 训练模式切换 (次数直录 / 秒表 / 倒计时)
+    // 模式切换
     window.switchHangMode = function (mode) {
+        if (hangState.status !== 'idle') resetHangAll();
         hangState.mode = mode;
-        ['reps', 'stopwatch', 'countdown'].forEach(m => {
+
+        ['stopwatch', 'countdown', 'reps'].forEach(m => {
             const btn = document.getElementById(`hangMode${m.charAt(0).toUpperCase() + m.slice(1)}`);
             if (btn) btn.classList.toggle('active', m === mode);
         });
@@ -121,17 +86,19 @@
         if (mode === 'reps') {
             if (repsContainer) repsContainer.classList.remove('hidden');
             if (timerWrap) timerWrap.classList.add('hidden');
+            if (presetContainer) presetContainer.classList.add('hidden');
         } else {
             if (repsContainer) repsContainer.classList.add('hidden');
             if (timerWrap) timerWrap.classList.remove('hidden');
-            if (presetContainer) {
-                presetContainer.classList.toggle('hidden', mode !== 'countdown');
-            }
+            if (presetContainer) presetContainer.classList.toggle('hidden', mode !== 'countdown');
+
+            hangState.currentTime = (mode === 'countdown') ? hangState.countdownTarget : 0;
+            updateDialValue(hangState.currentTime, mode === 'countdown' ? 'REMAINING' : 'SECONDS');
+            setRingProgress(100);
         }
-        resetHangAll();
     };
 
-    // 次数直录模式逻辑
+    // 次数模式打卡
     window.setQuickHangReps = function (reps) {
         hangState.repsCount = parseInt(reps) || 8;
         const input = document.getElementById('hangRepsInput');
@@ -147,46 +114,19 @@
         window.setQuickHangReps(next);
     };
 
-    window.commitHangReps = function () {
-        getAudioCtx();
-        const input = document.getElementById('hangRepsInput');
-        const count = input ? (parseInt(input.value) || hangState.repsCount) : hangState.repsCount;
-        playBeep(1200, 0.2);
-        speakVoice(`记录入册！有效引体做功 ${count} 次`);
-
-        if (typeof window.showToast === 'function') {
-            window.showToast(`✅ 引体 ${count} 次已记录入册！`);
-        }
-
-        if (typeof window.recordWorkoutLog === 'function') {
-            window.recordWorkoutLog({
-                type: hangState.variant === 'hang' ? '悬挂支撑' : '引体向上',
-                reps: count,
-                variant: hangState.variant
-            });
-        }
-    };
-
-    window.discardHangReps = function () {
-        speakVoice('已放弃本次记录');
-        if (typeof window.showToast === 'function') {
-            window.showToast('🗑️ 本次已放弃');
-        }
-    };
-
-    // 倒计时预设选择
+    // 倒计时预设
     window.setHangCountdownTime = function (sec) {
+        if (hangState.status !== 'idle') return;
         hangState.countdownTarget = parseInt(sec) || 30;
+        hangState.currentTime = hangState.countdownTarget;
+        updateDialValue(hangState.currentTime, 'REMAINING');
+
         const chips = document.querySelectorAll('#hangPresetContainer .preset-chip');
         chips.forEach(c => {
             c.classList.toggle('active', c.textContent.includes(`${sec}秒`));
         });
-        if (hangState.status === 'ready') {
-            updateDialValue(hangState.countdownTarget, 'TARGET SEC');
-        }
     };
 
-    // 拨盘数字与环形进度条驱动
     function updateDialValue(val, unit = 'SECONDS') {
         const valEl = document.getElementById('hangTimerValue');
         const unitEl = document.getElementById('hangTimerUnit');
@@ -197,140 +137,130 @@
     function setRingProgress(percent) {
         const circle = document.getElementById('hangProgressRing');
         if (!circle) return;
-        const radius = circle.r.baseVal.value;
+        const radius = 132;
         const circumference = 2 * Math.PI * radius;
         const offset = circumference - (percent / 100) * circumference;
         circle.style.strokeDasharray = `${circumference} ${circumference}`;
         circle.style.strokeDashoffset = offset;
     }
 
-    // 时钟驱动逻辑
-    function onHangTimerTick() {
-        const now = Date.now();
-        const delta = (now - hangState.lastTickTimestamp) / 1000;
-        hangState.lastTickTimestamp = now;
-
-        // 1. 抓杠就位准备倒计时
-        if (hangState.status === 'prep') {
-            const prevSec = Math.ceil(hangState.timeRemaining);
-            hangState.timeRemaining -= delta;
-            const currSec = Math.ceil(hangState.timeRemaining);
-
-            updateDialValue(Math.max(0, currSec), 'PREPARING');
-            const pct = Math.max(0, (hangState.timeRemaining / hangState.prepDuration) * 100);
-            setRingProgress(pct);
-
-            if (prevSec !== currSec && currSec >= 1 && currSec <= 3) {
-                playBeep(700, 0.08);
-                speakVoice(String(currSec));
-            }
-
-            if (hangState.timeRemaining <= 0) {
-                playBeep(1200, 0.25);
-                startActualHanging();
-            }
+    // 启动/停止主按钮
+    window.toggleHangStart = function () {
+        if (hangState.mode === 'reps') {
+            commitHangReps();
             return;
         }
 
-        // 2. 正向秒表 (极限界限)
-        if (hangState.status === 'running' && hangState.mode === 'stopwatch') {
-            const prevSec = Math.floor(hangState.elapsedSeconds);
-            hangState.elapsedSeconds += delta;
-            const currSec = Math.floor(hangState.elapsedSeconds);
-
-            updateDialValue(currSec, 'SECONDS');
-            const ringTarget = Math.max(60, hangState.personalBest || 30);
-            const pct = Math.min(100, (hangState.elapsedSeconds / ringTarget) * 100);
-            setRingProgress(pct);
-
-            // 【核心优化】：每秒微频 Tick 音，不再死寂
-            if (prevSec !== currSec && currSec > 0) {
-                playBeep(850, 0.03, 'sine', 0.08);
-
-                // 【核心优化】：每 5 秒精准语音播报，逢 30/60 秒进阶激励
-                if (currSec % 5 === 0) {
-                    if (currSec === 30) {
-                        speakVoice('30秒！突破半分钟！');
-                    } else if (currSec === 60) {
-                        speakVoice('60秒！突破一分钟！');
-                    } else if (currSec === 90) {
-                        speakVoice('90秒！金刚神力！');
-                    } else {
-                        speakVoice(`${currSec}秒`);
-                    }
-                }
-            }
-            return;
+        if (hangState.status === 'idle') {
+            startPreparation();
+        } else {
+            stopAndSettle();
         }
+    };
 
-        // 3. 目标挑战 (倒计时)
-        if (hangState.status === 'running' && hangState.mode === 'countdown') {
-            const prevSec = Math.ceil(hangState.timeRemaining);
-            hangState.timeRemaining -= delta;
-            const currSec = Math.ceil(hangState.timeRemaining);
+    // 战前就位准备（逐秒朗读）
+    function startPreparation() {
+        hangState.status = 'prep';
+        const actionBtn = document.getElementById('hangMainActionBtn');
+        const hintEl = document.getElementById('hangStatusHint');
+        const board = document.getElementById('hangDisplayBoard');
 
-            updateDialValue(Math.max(0, currSec), 'REMAINING');
-            const pct = Math.max(0, (hangState.timeRemaining / hangState.countdownTarget) * 100);
-            setRingProgress(pct);
-
-            // 【核心优化】：做功每秒节拍微音
-            if (prevSec !== currSec && currSec > 0) {
-                playBeep(850, 0.03, 'sine', 0.08);
-
-                // 剩余 > 10 秒时：每 5 秒节点提醒
-                if (currSec > 10 && currSec % 5 === 0) {
-                    speakVoice(`还剩${currSec}秒`);
-                }
-                // 剩余 <= 10 秒时：逐秒盲听连续倒数！
-                else if (currSec <= 10 && currSec >= 1) {
-                    playBeep(900, 0.06);
-                    speakVoice(String(currSec));
-                }
-            }
-
-            if (hangState.timeRemaining <= 0) {
-                // 目标达成！
-                onCountdownCompleted();
-            }
-            return;
+        if (actionBtn) {
+            actionBtn.textContent = '⏹ 结束悬挂';
+            actionBtn.className = 'btn btn-danger';
         }
+        if (hintEl) hintEl.textContent = 'PREPARE';
+        if (board) board.classList.add('in-prep');
+
+        let prepRemain = hangState.prepDuration;
+        updateDialValue(prepRemain, 'PREPARING');
+        setRingProgress(100);
+
+        speakVoice(`准备，${prepRemain}`, 1.2);
+
+        clearInterval(hangState.intervalId);
+        hangState.intervalId = setInterval(() => {
+            prepRemain--;
+            if (prepRemain > 0) {
+                updateDialValue(prepRemain, 'PREPARING');
+                setRingProgress((prepRemain / hangState.prepDuration) * 100);
+                speakVoice(String(prepRemain), 1.25);
+            } else {
+                clearInterval(hangState.intervalId);
+                speakVoice('开始！', 1.3);
+                startActualTimer();
+            }
+        }, 1000);
     }
 
-    function startActualHanging() {
+    // 正式计时主循环（关键优化：每一秒都朗读数字！）
+    function startActualTimer() {
         hangState.status = 'running';
         const hintEl = document.getElementById('hangStatusHint');
-        const tapHint = document.getElementById('hangTapStopHint');
-        if (hintEl) hintEl.textContent = 'HANGING NOW';
-        if (tapHint) tapHint.textContent = '拍击圆盘立即结算';
+        const board = document.getElementById('hangDisplayBoard');
 
+        if (hintEl) hintEl.textContent = (hangState.mode === 'stopwatch') ? 'HANGING' : 'REMAINING';
+        if (board) board.classList.remove('in-prep');
+
+        // 秒表模式：每一秒都读 1, 2, 3, 4, 5...
         if (hangState.mode === 'stopwatch') {
-            hangState.elapsedSeconds = 0;
-            speakVoice('抓杠开始！极限界限');
-            updateDialValue(0, 'SECONDS');
-        } else {
-            hangState.timeRemaining = hangState.countdownTarget;
-            speakVoice(`抓杠开始！目标 ${hangState.countdownTarget} 秒`);
-            updateDialValue(hangState.countdownTarget, 'REMAINING');
-        }
-    }
+            hangState.currentTime = 1;
+            updateDialValue(hangState.currentTime, 'SECONDS');
+            speakVoice('1');
+            setRingProgress(100);
 
-    function onCountdownCompleted() {
-        stopHangInterval();
-        hangState.status = 'ready';
-        playBeep(1200, 0.4);
-        speakVoice('目标达成！天罡筋膜，金刚不坏！');
-        showResultModal(hangState.countdownTarget, true);
-    }
-
-    function stopHangInterval() {
-        if (hangState.intervalId) {
             clearInterval(hangState.intervalId);
-            hangState.intervalId = null;
+            hangState.intervalId = setInterval(() => {
+                hangState.currentTime++;
+                updateDialValue(hangState.currentTime, 'SECONDS');
+                speakVoice(String(hangState.currentTime)); // 核心：每秒朗读！
+            }, 1000);
+        }
+        // 倒计时模式：每一秒都逐秒倒数 30, 29, 28...
+        else {
+            hangState.currentTime = hangState.countdownTarget;
+            updateDialValue(hangState.currentTime, 'REMAINING');
+            speakVoice(String(hangState.currentTime));
+            setRingProgress(100);
+
+            clearInterval(hangState.intervalId);
+            hangState.intervalId = setInterval(() => {
+                hangState.currentTime--;
+                if (hangState.currentTime > 0) {
+                    updateDialValue(hangState.currentTime, 'REMAINING');
+                    speakVoice(String(hangState.currentTime)); // 核心：每秒朗读！
+                    setRingProgress((hangState.currentTime / hangState.countdownTarget) * 100);
+                } else {
+                    stopAndSettle();
+                }
+            }, 1000);
         }
     }
 
-    // 结算弹窗展示与段位评估
-    function showResultModal(scoreSec, isSuccess = true) {
+    // 拍击圆盘结算交互
+    window.handleHangDialClick = function () {
+        if (hangState.status === 'running') {
+            stopAndSettle();
+        }
+    };
+
+    // 停止并生成战报
+    function stopAndSettle() {
+        clearInterval(hangState.intervalId);
+        window.speechSynthesis.cancel();
+
+        const score = (hangState.mode === 'stopwatch')
+            ? hangState.currentTime
+            : Math.max(0, hangState.countdownTarget - hangState.currentTime);
+
+        hangState.status = 'idle';
+        const isPB = savePb(score);
+
+        showResultModal(score, isPB);
+        resetButtonUI();
+    }
+
+    function showResultModal(score, isPB) {
         const modal = document.getElementById('hangResultModal');
         const scoreEl = document.getElementById('hangResultScore');
         const rankEl = document.getElementById('hangResultRank');
@@ -339,124 +269,135 @@
         if (!modal) return;
         modal.classList.add('active');
 
-        if (scoreEl) scoreEl.innerHTML = `${scoreSec}<span style="font-size: 2rem; color: #9aa0a6;">s</span>`;
+        if (scoreEl) scoreEl.innerHTML = `${score}<span style="font-size: 2rem; color: #9aa0a6;">s</span>`;
 
         let rank = '抓握初成';
-        if (scoreSec >= 60) rank = '天罡武圣 · 极意抓握';
-        else if (scoreSec >= 45) rank = '金刚神魔 · 筋膜如铁';
-        else if (scoreSec >= 30) rank = '钢铁抓握力 · 破境';
-        else if (scoreSec >= 15) rank = '坚毅淬体 · 精通';
+        let desc = '每一次悬挂都在重塑筋膜与神经募集！';
+
+        if (score >= 90) {
+            rank = '⚡ 陆地攀岩神';
+            desc = '恐怖的握力耐力！重力对你而言只是参考！';
+        } else if (score >= 60) {
+            rank = '🔥 钢筋铁骨';
+            desc = '突破1分钟大关，前臂坚如磐石！';
+        } else if (score >= 40) {
+            rank = '💪 引力挑战者';
+            desc = '核心与握力兼具，状态极佳！';
+        } else if (score >= 20) {
+            rank = '✨ 进阶行者';
+            desc = '稳扎稳打，每一次做功都在刺激微循环！';
+        }
+
+        if (isPB) {
+            rank = `🏆 新纪录! ` + rank;
+            speakVoice(`悬挂结束，创造全新纪录 ${score} 秒！太霸气了！`, 1.15);
+        } else {
+            speakVoice(`悬挂完成，${score} 秒！干得漂亮！`, 1.2);
+        }
 
         if (rankEl) rankEl.textContent = rank;
-        if (descEl) {
-            descEl.textContent = isSuccess
-                ? '每一次做功都在重塑筋膜与小臂抓握力！'
-                : '虽未达标，但有效做功已刺激肌纤维！';
-        }
-
-        savePb(scoreSec);
+        if (descEl) descEl.textContent = desc;
     }
-
-    // 拍击圆盘结算交互
-    window.handleHangDialClick = function () {
-        if (hangState.status === 'running') {
-            stopHangInterval();
-            const score = hangState.mode === 'stopwatch'
-                ? Math.floor(hangState.elapsedSeconds)
-                : Math.max(0, hangState.countdownTarget - Math.ceil(hangState.timeRemaining));
-
-            playBeep(950, 0.15);
-            speakVoice(`结算完成，本次悬挂 ${score} 秒`);
-            showResultModal(score, score >= hangState.countdownTarget);
-            hangState.status = 'ready';
-            const actionBtn = document.getElementById('hangMainActionBtn');
-            if (actionBtn) actionBtn.textContent = '开始计时';
-        }
-    };
-
-    window.toggleHangStart = function () {
-        getAudioCtx();
-        const actionBtn = document.getElementById('hangMainActionBtn');
-        const hintEl = document.getElementById('hangStatusHint');
-
-        if (hangState.status === 'ready') {
-            // 启动准备倒计时
-            hangState.status = 'prep';
-            hangState.timeRemaining = hangState.prepDuration;
-            hangState.lastTickTimestamp = Date.now();
-            if (hintEl) hintEl.textContent = 'GET READY';
-            if (actionBtn) actionBtn.textContent = '⏹ 终止复位';
-
-            speakVoice(`准备抓杠，留${hangState.prepDuration}秒就位`);
-            stopHangInterval();
-            hangState.intervalId = setInterval(onHangTimerTick, 100);
-        } else {
-            // 终止复位
-            resetHangAll();
-        }
-    };
-
-    window.resetHangAll = function () {
-        stopHangInterval();
-        hangState.status = 'ready';
-        hangState.elapsedSeconds = 0;
-        hangState.timeRemaining = 0;
-
-        const actionBtn = document.getElementById('hangMainActionBtn');
-        const hintEl = document.getElementById('hangStatusHint');
-        const tapHint = document.getElementById('hangTapStopHint');
-        if (actionBtn) actionBtn.textContent = '开始计时';
-        if (hintEl) hintEl.textContent = 'READY';
-        if (tapHint) tapHint.textContent = '拍击圆盘立即结算';
-
-        setRingProgress(0);
-        updateDialValue(hangState.mode === 'countdown' ? hangState.countdownTarget : 0, 'SECONDS');
-    };
 
     window.closeHangResultModal = function (shouldSave) {
         const modal = document.getElementById('hangResultModal');
         if (modal) modal.classList.remove('active');
 
         if (shouldSave) {
-            speakVoice('有效做功已封存入册！');
-            if (typeof window.showToast === 'function') {
-                window.showToast('💾 悬挂战功已成功封存！');
-            }
-        } else {
-            speakVoice('本次战报已放弃');
+            const duty = getDutyShiftInfo();
+            const durSec = hangState.currentTime || 30;
+            const logEntry = {
+                id: 'l_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                date: duty.dutyDateStr,
+                type: hangState.variant === 'hang' ? '极限悬挂' : '引体向上',
+                sets: 1,
+                reps: `${durSec}s`,
+                total: durSec,
+                isAerobic: false,
+                isIsometric: true,
+                heart: '未知',
+                duration: Math.max(1, Math.round(durSec / 60)),
+                rpe: 8,
+                dutyTag: `${duty.shift.name} (归属${duty.dutyDateStr.slice(5)})`,
+                startTimeStamp: getFullTimestamp(new Date(Date.now() - durSec * 1000)),
+                endTimeStamp: getFullTimestamp(),
+                downSec: 0,
+                upSec: 0,
+                tutSeconds: durSec,
+                note: `悬挂战钟收功：完成 ${durSec} 秒抗阻。`,
+                createdAt: new Date().toISOString()
+            };
+
+            data.logs.push(logEntry);
+            data.workoutQueue = data.workoutQueue.filter(x => !(x.actionId === 'act_hang' || x.name.includes('悬挂')));
+            saveData();
+            renderAll();
+            showToast('💾 悬挂战功已成功封存入实录！');
         }
+
         resetHangAll();
     };
 
-    // 偏好设置弹窗 (就位时间调谐)
-    window.openHangSettings = function () {
-        const modal = document.getElementById('hangSettingsModal');
-        if (modal) modal.classList.add('active');
-    };
+    function commitHangReps() {
+        const count = hangState.repsCount || 8;
+        const duty = getDutyShiftInfo();
+        const typeName = hangState.variant === 'wide' ? '阔引体' : '引体';
 
-    window.closeHangSettings = function () {
-        const modal = document.getElementById('hangSettingsModal');
-        if (modal) modal.classList.remove('active');
-    };
+        const logEntry = {
+            id: 'l_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+            date: duty.dutyDateStr,
+            type: typeName,
+            sets: 1,
+            reps: `${count}次`,
+            total: count,
+            isAerobic: false,
+            isIsometric: false,
+            heart: '未知',
+            duration: 1,
+            rpe: 8,
+            dutyTag: `${duty.shift.name} (归属${duty.dutyDateStr.slice(5)})`,
+            startTimeStamp: getFullTimestamp(),
+            endTimeStamp: getFullTimestamp(),
+            downSec: 3.0,
+            upSec: 1.0,
+            tutSeconds: count * 4,
+            note: `${typeName}有效做功 ${count} 次打卡入册。`,
+            createdAt: new Date().toISOString()
+        };
 
-    window.selectHangPrepChip = function (sec) {
-        hangState.prepDuration = parseInt(sec) || 10;
-        const valEl = document.getElementById('hangPrepValueDisplay');
-        if (valEl) valEl.textContent = `${hangState.prepDuration}s`;
+        data.logs.push(logEntry);
+        data.workoutQueue = data.workoutQueue.filter(x => !(x.actionId === 'act_pullup' || x.actionId === 'act_pullup_wide'));
+        saveData();
+        renderAll();
 
-        const chips = document.querySelectorAll('#hangSettingsModal .prep-chip-btn');
-        chips.forEach(c => {
-            c.classList.toggle('active', c.textContent.includes(`${sec}秒`));
-        });
-    };
+        speakVoice(`记录入册！有效${typeName} ${count} 次`);
+        showToast(`✅ ${typeName} ${count} 次已记录入册！`);
+    }
 
-    window.stepHangPrepTime = function (delta) {
-        const next = Math.max(3, Math.min(30, hangState.prepDuration + delta));
-        window.selectHangPrepChip(next);
+    function resetButtonUI() {
+        const actionBtn = document.getElementById('hangMainActionBtn');
+        const hintEl = document.getElementById('hangStatusHint');
+        if (actionBtn) {
+            actionBtn.textContent = '开始计时 (全程报数)';
+            actionBtn.className = 'btn btn-primary';
+        }
+        if (hintEl) hintEl.textContent = 'READY';
+    }
+
+    window.resetHangAll = function () {
+        clearInterval(hangState.intervalId);
+        window.speechSynthesis.cancel();
+        hangState.status = 'idle';
+
+        resetButtonUI();
+        setRingProgress(100);
+
+        hangState.currentTime = (hangState.mode === 'countdown') ? hangState.countdownTarget : 0;
+        updateDialValue(hangState.currentTime, hangState.mode === 'countdown' ? 'REMAINING' : 'SECONDS');
     };
 
     document.addEventListener('DOMContentLoaded', () => {
         loadPb();
-        setRingProgress(0);
+        setRingProgress(100);
     });
 })();
