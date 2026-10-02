@@ -4,24 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="color-scheme" content="dark">
-    <meta name="theme-color" content="#08090c">
-    
-    <!-- PWA 原生应用与离线化支持 -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="天罡战阙">
-    <link rel="icon" type="image/svg+xml" href="icon.svg">
-    <link rel="apple-touch-icon" href="icon.svg">
-
+    <meta name="theme-color" content="#0a0908">
     <title>天罡洗髓·焚糖战阙 // CYBER-MARSHAL GLYCO-WARFORGE PRO</title>
-    <!-- 机甲科技与等宽字体 -->
+
+    <!-- 机甲等宽与战术数字字体 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=20261003">
+
+    <!-- 本地数据库支持 -->
     <script src="https://cdn.bootcdn.net/ajax/libs/dexie/3.2.4/dexie.min.js"></script>
-    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 
@@ -34,9 +27,9 @@
                     <span>⚡ 天罡洗髓·焚糖战阙</span>
                 </div>
 
-                <!-- 毫秒级对齐警务战备时钟 -->
+                <!-- 毫秒级真实对齐警务战备时钟 -->
                 <div class="police-clock-pill"
-                    data-hud-tip="【战备授时中枢】：严格遵守 08:30 勤务交接换日铁律。">
+                    data-hud-tip="【战备授时中枢】：严格遵守 08:30 勤务交接换日铁律（00:00~08:30 自动归属昨日班次下半夜）。">
                     <div class="pulse-dot"></div>
                     <span id="liveTimeText">00:00:00.0</span>
                     <span class="badge badge-police" id="liveDutyDayBadge">当班: --</span>
@@ -44,19 +37,24 @@
             </div>
 
             <div class="header-controls">
-                <div class="font-scaler" data-hud-tip="【字号微调】：调整视认大小。">
+                <div class="font-scaler" data-hud-tip="【战术字号缩放】：点击 A- 或 A+ 调整字体，方便远距离视认。">
                     <button class="font-btn" onclick="adjustFontSize(-1)">A-</button>
                     <button class="font-btn" onclick="adjustFontSize(1)">A+</button>
+                    <button class="font-btn" onclick="resetFontSize()" style="font-size:11px;">↺</button>
                 </div>
-                <div class="font-scaler" data-hud-tip="【阅读排版】：行距 / 段距调节。">
-                    <button class="font-btn" id="typoPanelBtn" onclick="toggleTypoPanel(event)" title="行距 / 段距">📐</button>
+                <div class="font-scaler" data-hud-tip="【阅读排版】：行距 / 段距，全局生效。">
+                    <button class="font-btn" id="typoPanelBtn" onclick="toggleTypoPanel(event)" title="行距 / 段距" style="font-size:14px;">📐</button>
                 </div>
-                <button class="btn btn-outline btn-sm" onclick="exportBackup()" data-hud-tip="【全维备份】：导出 JSON 卷宗。">📤 备份</button>
-                <button class="btn btn-outline btn-sm" onclick="document.getElementById('importFile').click()" data-hud-tip="【数据恢复】：恢复离线备份。">📥 导入</button>
+                <button class="btn btn-outline btn-sm" onclick="exportBackup()"
+                    data-hud-tip="【本源导出】：将出征方案、实录、AI总结与配置打包导出为 JSON 备份。">📤 备份</button>
+                <button class="btn btn-outline btn-sm" onclick="document.getElementById('importFile').click()"
+                    data-hud-tip="【本源还原】：恢复离线备份数据。">📥 导入</button>
                 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(event)">
             </div>
+
+            <!-- 行距/段距调节浮动窗口 -->
             <div id="typoPanel" class="typo-panel hidden">
-                <div class="typo-panel-title">📐 行距 / 段距</div>
+                <div class="typo-panel-title">📐 行距 / 段距调节</div>
                 <div class="typo-panel-row">
                     <span class="typo-panel-label">行距</span>
                     <input type="range" class="typo-range" data-typo="lh" min="1.2" max="3" step="0.05" value="1.85" oninput="setReadLineHeight(this.value)">
@@ -68,245 +66,242 @@
                     <input type="number" class="typo-num" data-typo="pg" min="0" max="3" step="0.05" value="1" oninput="setReadParaGapLines(this.value)" onblur="onTypoBlur(this)">
                     <span class="typo-unit">×行距</span>
                 </div>
+                <div class="typo-panel-hint">段距 1.00 = 与行距等高，全局文字自适应。</div>
             </div>
         </header>
 
-        <!-- 战术顶栏导航 (前四大核心置顶) -->
+        <!-- 战术顶栏分类切换 -->
         <div class="tabs-bar" id="topTabsBar"></div>
 
-        <!-- 核心分屏主战位 -->
+        <!-- 核心分屏工作区 -->
         <main>
             <div class="left-deck" id="leftDeckPane">
 
-                <!-- 1. 慢跑巡航 (位置1) -->
-                <div id="action_quick" class="tab-content active">
+                <!-- 1. 慢跑巡航面板 -->
+                <div id="action_quick" class="tab-content">
                     <div id="actionQuickContainer"></div>
                 </div>
 
-                <!-- 2. 压腿舒筋 (位置2 - 严格 60s 起步) -->
+                <!-- 2. 压腿舒筋战钟面板 (带全程语音读秒与间隔时长记忆) -->
                 <div id="stretch_timer" class="tab-content">
-                    <div class="cyber-card compact-tool-card" style="--card-accent: var(--purple-accent);">
-                        <div class="card-header" style="margin-bottom:6px;">
-                            <span>🧘 压腿舒筋 · 盲听战钟 (≥60s起步)</span>
-                            <span class="badge" style="background:rgba(181,95,230,0.15); border:1px solid var(--purple-accent); color:var(--purple-accent);" id="stretchTimerStatus">就绪 (READY)</span>
+                    <div class="cyber-card compact-tool-card" style="border-color:var(--purple-accent);">
+                        <div class="tool-emblem-badge" style="color:var(--purple-accent);">🧘</div>
+                        <h2 style="font-family:var(--font-tech); color:var(--purple-accent); font-size:1.6rem; letter-spacing:1px; margin-bottom:4px;">
+                            压腿舒筋 · 极意拉伸战钟
+                        </h2>
+                        <p style="color:var(--text-muted); font-size:12.5px; margin-bottom:10px;">
+                            改善下肢与眼底微循环 · 全程逐秒语音朗读 · 听令换边
+                        </p>
+
+                        <!-- 模式切换 -->
+                        <div class="stretch-mode-bar" style="display:flex; justify-content:center; gap:8px; margin-bottom:12px;">
+                            <button class="btn btn-sm btn-outline active" id="btnStretchModeFlow" onclick="switchStretchSubMode('flow')">双腿周天循环 (带休整)</button>
+                            <button class="btn btn-sm btn-outline" id="btnStretchModeCountdown" onclick="switchStretchSubMode('countdown')">单侧目标倒计时</button>
+                            <button class="btn btn-sm btn-outline" id="btnStretchModeStopwatch" onclick="switchStretchSubMode('stopwatch')">自由正向秒表</button>
                         </div>
 
-                        <!-- 模式切换：倒计时 vs 正向秒表 vs PNF极意 -->
-                        <div class="mode-selector" style="margin: 4px auto 8px auto;">
-                            <button class="mode-btn active" id="btnStretchModeCountdown" onclick="switchStretchMode('countdown')">目标倒计时</button>
-                            <button class="mode-btn" id="btnStretchModeStopwatch" onclick="switchStretchMode('stopwatch')">正向秒表</button>
-                            <button class="mode-btn" id="btnStretchModePnf" onclick="switchStretchMode('pnf')">PNF极意周天</button>
+                        <!-- 参数调谐舱 (调整后自动记忆为默认值) -->
+                        <div id="stretchSettingsArea" class="stretch-settings-card"></div>
+
+                        <!-- 状态指示 -->
+                        <div id="stretchPhaseDisplay" class="timer-sub-phase" style="color:var(--purple-accent); font-size:15px; font-weight:bold; min-height:24px; margin-bottom:4px;">
+                            就位准备 · 听令而动
+                        </div>
+                        <div id="stretchCycleCounter" style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted); margin-bottom:8px;">
+                            单侧目标: 60s | 中间间隔: 30s
                         </div>
 
-                        <!-- 大表盘 -->
-                        <div class="timer-display compact-timer-display" style="border-color: rgba(181, 95, 230, 0.35);">
-                            <div class="timer-set-counter" id="stretchCycleCounter" style="color:var(--purple-accent);">单侧目标压腿 (≥60s)</div>
-                            <div class="timer-phase" id="stretchPhaseDisplay" style="color:var(--purple-accent);">闭眼就位 · 听令压腿</div>
-                            <div class="timer-clock" id="stretchTimerClock" style="text-shadow: 0 0 22px rgba(181, 95, 230, 0.45);">01:00</div>
-                            <div class="timer-progress"><div class="timer-progress-fill" id="stretchProgressFill" style="background:linear-gradient(90deg, var(--purple-accent), var(--cyan-accent));"></div></div>
+                        <!-- 巨型时间表盘 -->
+                        <div class="timer-display-box" style="border-color:rgba(181,95,230,0.35);">
+                            <div class="timer-clock mega-clock" id="stretchTimerClock" style="color:#ffffff; text-shadow:0 0 25px rgba(181,95,230,0.6);">
+                                01:00
+                            </div>
+                            <div class="timer-progress">
+                                <div class="timer-progress-fill" id="stretchProgressFill" style="background:linear-gradient(90deg, var(--purple-accent), var(--cyan-accent));"></div>
+                            </div>
                         </div>
 
-                        <!-- 紧凑控制按钮 -->
-                        <div class="compact-control-bar">
-                            <button class="btn btn-primary" id="stretchStartBtn" onclick="toggleStretchTimer()" style="font-size:16px; padding:10px 28px; background:var(--purple-accent);">▶ 开始压腿</button>
-                            <button class="btn btn-outline" id="stretchPauseBtn" onclick="pauseStretchTimer()" disabled>⏸ 驻留</button>
-                            <button class="btn btn-danger" onclick="stopStretchTimer(false)">⏹ 终止复位</button>
+                        <!-- 控制按键栏 -->
+                        <div class="compact-control-bar" style="margin-top:16px;">
+                            <button class="btn btn-primary" id="stretchStartBtn" onclick="toggleStretchTimer()" style="background:var(--purple-accent); font-size:16px; padding:12px 32px;">
+                                ▶ 开始压腿 (留10s准备)
+                            </button>
+                            <button class="btn btn-danger" id="stretchStopBtn" onclick="stopStretchTimer(false)" style="font-size:15px;">
+                                ⏹ 提前收功并封存
+                            </button>
                         </div>
-
-                        <!-- 快捷参数区 (≥60s) -->
-                        <div id="stretchSettingsArea" style="margin-top:10px;"></div>
                     </div>
                 </div>
 
-                <!-- 3. 离心慢放 (位置3 - 默认2组，极速组数/次数切换，组间间歇可调/一键跳过) -->
+                <!-- 3. 离心慢放战钟面板 (默认10次，改动自动记忆，语音指导对齐锻炼计划.html) -->
                 <div id="timer" class="tab-content">
-                    <div class="cyber-card compact-tool-card" style="--card-accent: var(--green-accent);">
-                        <div class="card-header" style="margin-bottom:4px;">
-                            <span>⏱️ 离心慢放 · 破糖战钟</span>
-                            <span class="badge badge-green" id="timerStatus">就绪 (READY)</span>
-                        </div>
+                    <div class="cyber-card compact-tool-card" style="border-color:var(--green-accent);">
+                        <div class="tool-emblem-badge" style="color:var(--green-accent);">🔥</div>
+                        <h2 style="font-family:var(--font-tech); color:var(--orange-primary); font-size:1.6rem; letter-spacing:1px; margin-bottom:4px;">
+                            离心慢放 · 破糖战钟
+                        </h2>
+                        <p style="color:var(--text-muted); font-size:12.5px; margin-bottom:12px;">
+                            4s慢速离心下放 / 1s向心撑起 · 盲听提前200ms报号 · 自动封存入册
+                        </p>
 
-                        <!-- 极速组数切换药丸 -->
-                        <div class="sets-pill-selector">
-                            <span class="pill-label">总循环组数:</span>
-                            <button type="button" class="set-chip active" id="chipSet2" onclick="setEccentricQuickSets(2)">2组 (标配)</button>
-                            <button type="button" class="set-chip" id="chipSet3" onclick="setEccentricQuickSets(3)">3组</button>
-                            <button type="button" class="set-chip" id="chipSet4" onclick="setEccentricQuickSets(4)">4组 (强化)</button>
-                            <button type="button" class="set-chip" id="chipSet5" onclick="setEccentricQuickSets(5)">5组</button>
-                            <div class="stepper-mini">
-                                <button type="button" onclick="stepEccentricSets(-1)">−</button>
-                                <span id="eccSetsDisplay">2</span>
-                                <button type="button" onclick="stepEccentricSets(1)">+</button>
+                        <!-- 次数与参数调节 (修改后永久记忆为下一次默认值) -->
+                        <div class="eccentric-config-box">
+                            <div class="config-row">
+                                <span class="config-label">🔥 循环总次数 (改动后自动保存为默认值):</span>
+                                <div class="stepper-cluster">
+                                    <button class="stepper-btn" onclick="stepEccentricSets(-1)">−</button>
+                                    <span class="stepper-val" id="eccSetsDisplay">10</span>
+                                    <button class="stepper-btn" onclick="stepEccentricSets(1)">+</button>
+                                    <span style="font-size:12px; color:var(--text-muted);">次</span>
+                                </div>
+                            </div>
+                            <div class="chip-preset-row">
+                                <button class="preset-chip" id="chipSet6" onclick="setEccentricQuickSets(6)">6次</button>
+                                <button class="preset-chip" id="chipSet8" onclick="setEccentricQuickSets(8)">8次</button>
+                                <button class="preset-chip active" id="chipSet10" onclick="setEccentricQuickSets(10)">10次 (推荐)</button>
+                                <button class="preset-chip" id="chipSet12" onclick="setEccentricQuickSets(12)">12次</button>
+                                <button class="preset-chip" id="chipSet15" onclick="setEccentricQuickSets(15)">15次</button>
+                                <button class="preset-chip" id="chipSet20" onclick="setEccentricQuickSets(20)">20次</button>
+                            </div>
+
+                            <div class="row" style="margin-top:10px;">
+                                <div class="flex-1">
+                                    <label>慢下秒数 (秒/次)</label>
+                                    <input type="number" id="timerDownInput" value="4.0" step="0.5" min="1" onchange="syncTimerInputs()">
+                                </div>
+                                <div class="flex-1">
+                                    <label>撑起爆发 (秒/次)</label>
+                                    <input type="number" id="timerUpInput" value="1.0" step="0.5" min="0.5" onchange="syncTimerInputs()">
+                                </div>
+                                <div class="flex-1">
+                                    <label>语音提前报号</label>
+                                    <select id="voiceEnabled">
+                                        <option value="true">开启 (提前200ms报号)</option>
+                                        <option value="false">静默模式</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- 极速每组次数切换药丸 (确保单组做功点数可控) -->
-                        <div class="sets-pill-selector" style="margin-top:4px;">
-                            <span class="pill-label">每组做功次数:</span>
-                            <button type="button" class="set-chip" id="chipEccRep6" onclick="setEccentricQuickReps(6)">6次</button>
-                            <button type="button" class="set-chip active" id="chipEccRep8" onclick="setEccentricQuickReps(8)">8次 (标配)</button>
-                            <button type="button" class="set-chip" id="chipEccRep10" onclick="setEccentricQuickReps(10)">10次 (强化)</button>
-                            <button type="button" class="set-chip" id="chipEccRep12" onclick="setEccentricQuickReps(12)">12次</button>
-                            <div class="stepper-mini">
-                                <button type="button" onclick="stepEccentricReps(-1)">−</button>
-                                <span id="eccRepsDisplay">8</span>
-                                <button type="button" onclick="stepEccentricReps(1)">+</button>
+                        <!-- 战钟指示 -->
+                        <div class="timer-display-box" style="margin-top:14px;">
+                            <div class="timer-set-counter" id="timerSetCounter" style="font-size:16px;">
+                                准备就绪 · 共 10 次
+                            </div>
+                            <div class="timer-phase" id="phaseDisplay" style="font-size:24px; min-height:32px;">
+                                战法就绪
+                            </div>
+                            <div class="timer-clock mega-clock" id="timerClock">00:00</div>
+                            <div class="timer-progress">
+                                <div class="timer-progress-fill" id="timerProgressFill"></div>
                             </div>
                         </div>
 
-                        <div class="timer-display compact-timer-display" id="eccTimerDisplayBox">
-                            <div class="timer-set-counter" id="timerSetCounter">第 0 / 2 组 (每组 8 次)</div>
-                            <div class="timer-phase" id="phaseDisplay">战法就绪</div>
-                            <div class="timer-clock" id="timerClock">00:00</div>
-                            <div class="timer-progress"><div class="timer-progress-fill" id="timerProgressFill"></div></div>
-                        </div>
-
-                        <!-- 控制按键（含【⚡跳过休息】按钮） -->
-                        <div class="compact-control-bar">
-                            <button class="btn btn-success" id="timerStartBtn" onclick="startEccentricTimer()" style="font-size:16px; padding:10px 24px;">▶ 开始离心慢放 (留10s)</button>
-                            <button class="btn btn-amber hidden" id="timerSkipRestBtn" onclick="skipTimerRest()" style="font-size:15px; padding:10px 20px; animation: pulseGlow 1.2s infinite;">⚡ 跳过休息 (直接开练)</button>
-                            <button class="btn btn-outline" id="timerPauseBtn" onclick="pauseEccentricTimer()" disabled>⏸ 暂停</button>
-                            <button class="btn btn-danger" onclick="stopEccentricTimer()">⏹ 终止复位</button>
-                        </div>
-
-                        <!-- 组间休息调谐区 -->
-                        <div class="rest-settings-bar">
-                            <span style="font-size:11px; color:var(--text-muted);">☕ 组间休息:</span>
-                            <button type="button" class="rest-chip" onclick="setEccentricRestSec(30)">30s</button>
-                            <button type="button" class="rest-chip" onclick="setEccentricRestSec(45)">45s</button>
-                            <button type="button" class="rest-chip active" id="chipRest60" onclick="setEccentricRestSec(60)">60s (推荐)</button>
-                            <button type="button" class="rest-chip" onclick="setEccentricRestSec(90)">90s</button>
-                            <input type="number" id="eccCustomRestInput" value="60" min="10" max="300" step="5" onchange="setEccentricRestSec(this.value)" style="width:55px; padding:2px 4px; font-size:11px; text-align:center;">
-                            <span style="font-size:11px; color:var(--text-dim);">秒</span>
-                        </div>
-
-                        <div class="row" style="margin-top:8px;">
-                            <div class="flex-1">
-                                <label>盲听语音</label>
-                                <select id="voiceEnabled" onchange="syncTimerInputs()">
-                                    <option value="true">开启 (提前200ms)</option>
-                                    <option value="false">静默 (MUTE)</option>
-                                </select>
-                            </div>
-                            <div class="flex-1">
-                                <label>离心慢下 (秒)</label>
-                                <input type="number" id="timerDownInput" value="4.0" step="0.5" min="1" onchange="syncTimerInputs()">
-                            </div>
-                            <div class="flex-1">
-                                <label>撑起爆发 (秒)</label>
-                                <input type="number" id="timerUpInput" value="1.0" step="0.5" min="0.5" onchange="syncTimerInputs()">
-                            </div>
-                            <input type="hidden" id="timerSetsInput" value="2">
-                            <input type="hidden" id="timerRepsInput" value="8">
+                        <div class="compact-control-bar" style="margin-top:14px;">
+                            <button class="btn btn-success" id="timerStartBtn" onclick="startEccentricTimer()" style="font-size:16px; padding:12px 34px;">
+                                ▶ 开始离心慢放 (留10s准备)
+                            </button>
+                            <button class="btn btn-outline" id="timerPauseBtn" onclick="pauseEccentricTimer()" disabled>
+                                ⏸ 暂停
+                            </button>
+                            <button class="btn btn-danger" onclick="stopEccentricTimer()">
+                                ⏹ 终止复位
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- 4. 引体全能舱 (位置4 - 标准引体/阔引体/悬挂 + 次数直录/倒计时/秒表) -->
+                <!-- 4. 引体战阙 & 极限悬挂 (参考 IRON GRIP 全程逐秒报数) -->
                 <div id="hang_timer" class="tab-content">
-                    <div class="cyber-card compact-tool-card" style="--card-accent: var(--cyan-accent); text-align:center;">
-                        <div class="card-header" style="margin-bottom:4px;">
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <span>🦇 引体战阙</span>
-                                <span class="pb-badge" id="hangPbDisplay" style="color:var(--amber-accent); font-size:11px;">🏆 PB: 0s</span>
-                            </div>
-                            <div style="display:flex; gap:6px; align-items:center;">
-                                <button class="btn btn-sm btn-outline" onclick="openHangSettings()" title="设置就位时间">⚙️ 设置</button>
-                                <span class="badge badge-cyan" id="hangScreenLockBadge">常亮就绪</span>
-                            </div>
-                        </div>
+                    <div class="cyber-card compact-tool-card" style="border-color:var(--cyan-accent);">
+                        <div class="tool-emblem-badge" style="color:var(--cyan-accent);">🦇</div>
+                        <h2 style="font-family:var(--font-tech); color:var(--cyan-accent); font-size:1.6rem; letter-spacing:1px; margin-bottom:4px;">
+                            天罡引体 · 极限悬挂战钟
+                        </h2>
+                        <div class="hang-pb-tag" id="hangPbDisplay">🏆 最佳悬挂: 0s</div>
 
-                        <!-- 动作分类：标准引体 vs 阔引体 vs 极限悬挂 -->
-                        <div class="sub-variant-selector">
-                            <button type="button" class="variant-chip active" id="chipVarStandard" onclick="switchHangVariant('standard')">标准引体 (正/对握)</button>
-                            <button type="button" class="variant-chip" id="chipVarWide" onclick="switchHangVariant('wide')">阔引体 (宽握倒三角)</button>
-                            <button type="button" class="variant-chip" id="chipVarHang" onclick="switchHangVariant('hang')">极限悬挂 (抓握筋膜)</button>
-                        </div>
-
-                        <!-- 训练模式：次数直录 vs 极限秒表 vs 目标倒计时 -->
-                        <div class="mode-selector" style="margin: 6px auto 10px auto;">
-                            <button class="mode-btn active" id="hangModeReps" onclick="switchHangMode('reps')">🔢 次数直录</button>
-                            <button class="mode-btn" id="hangModeStopwatch" onclick="switchHangMode('stopwatch')">⏱️ 极限界限 (秒表)</button>
-                            <button class="mode-btn" id="hangModeCountdown" onclick="switchHangMode('countdown')">🎯 目标挑战 (倒计时)</button>
-                        </div>
-
-                        <!-- A. 模式一：次数直录操作台 (直接输入个数，记录 vs 放弃) -->
-                        <div id="hangRepsContainer" class="reps-input-panel">
-                            <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">本次完成引体向上净次数：</div>
-                            <div class="reps-preset-row">
-                                <button type="button" class="rep-chip" onclick="setQuickHangReps(3)">3次</button>
-                                <button type="button" class="rep-chip" onclick="setQuickHangReps(5)">5次</button>
-                                <button type="button" class="rep-chip active" id="chipRep8" onclick="setQuickHangReps(8)">8次</button>
-                                <button type="button" class="rep-chip" onclick="setQuickHangReps(10)">10次</button>
-                                <button type="button" class="rep-chip" onclick="setQuickHangReps(12)">12次</button>
-                                <button type="button" class="rep-chip" onclick="setQuickHangReps(15)">15次</button>
+                        <!-- 动作变式与模式 -->
+                        <div class="hang-selector-strip">
+                            <div class="hang-chip-group">
+                                <button class="preset-chip active" id="chipVarStandard" onclick="switchHangVariant('standard')">标准引体</button>
+                                <button class="preset-chip" id="chipVarWide" onclick="switchHangVariant('wide')">阔握大圆肌</button>
+                                <button class="preset-chip" id="chipVarHang" onclick="switchHangVariant('hang')">极限悬挂支撑</button>
                             </div>
-                            <div class="reps-custom-row">
-                                <span style="font-size:12px; color:var(--text-muted);">做功点数:</span>
-                                <div class="stepper-control" style="max-width:140px;">
-                                    <button class="stepper-btn" onclick="stepHangReps(-1)">−</button>
-                                    <input type="number" id="hangRepsInput" value="8" min="1" max="100" style="width:50px; text-align:center; font-weight:bold; color:var(--cyan-accent); font-size:18px; background:transparent; border:none;">
-                                    <button class="stepper-btn" onclick="stepHangReps(1)">+</button>
-                                </div>
-                                <span style="font-size:12px; color:var(--text-muted);">个</span>
-                            </div>
-
-                            <div class="compact-control-bar" style="margin-top:12px;">
-                                <button class="btn btn-secondary" onclick="discardHangReps()" style="flex:1;">🗑️ 放弃 (未达标)</button>
-                                <button class="btn btn-success" onclick="commitHangReps()" style="flex:2; font-size:16px;">💾 记录入册 (有效做功)</button>
+                            <div class="hang-chip-group">
+                                <button class="mode-tab-btn active" id="hangModeStopwatch" onclick="switchHangMode('stopwatch')">极限界限(秒表·逐秒报数)</button>
+                                <button class="mode-tab-btn" id="hangModeCountdown" onclick="switchHangMode('countdown')">目标挑战(倒计时)</button>
+                                <button class="mode-tab-btn" id="hangModeReps" onclick="switchHangMode('reps')">次数直录打卡</button>
                             </div>
                         </div>
 
-                        <!-- B. 模式二与三：秒表/倒计时表盘 -->
-                        <div id="hangTimerDialWrap" class="hidden">
-                            <div class="hang-dial-box" id="hangDisplayBoard" onclick="handleHangDialClick()">
-                                <svg class="hang-progress-ring" viewBox="0 0 250 250">
-                                    <circle stroke="rgba(255, 255, 255, 0.08)" stroke-width="9" fill="transparent" r="115" cx="125" cy="125"/>
-                                    <circle class="hang-progress-ring__circle" id="hangProgressRing" stroke="url(#hangRingGrad)" stroke-width="9" fill="transparent" r="115" cx="125" cy="125"/>
+                        <!-- 倒计时快捷选择 -->
+                        <div class="countdown-presets hidden" id="hangPresetContainer" style="margin:8px 0;">
+                            <div class="preset-chip" onclick="setHangCountdownTime(15)">15秒</div>
+                            <div class="preset-chip active" onclick="setHangCountdownTime(30)">30秒</div>
+                            <div class="preset-chip" onclick="setHangCountdownTime(45)">45秒</div>
+                            <div class="preset-chip" onclick="setHangCountdownTime(60)">60秒</div>
+                            <div class="preset-chip" onclick="setHangCountdownTime(90)">90秒</div>
+                        </div>
+
+                        <!-- 核心大表盘 (支持拍击停止) -->
+                        <div id="hangTimerDialWrap" style="margin:10px 0;">
+                            <div class="hang-circle-dial" id="hangDisplayBoard" onclick="handleHangDialClick()" title="悬挂中拍击圆盘立即结算">
+                                <svg class="hang-progress-svg" viewBox="0 0 290 290">
+                                    <circle stroke="rgba(255, 255, 255, 0.08)" stroke-width="12" fill="transparent" r="132" cx="145" cy="145"/>
+                                    <circle class="hang-progress-ring" id="hangProgressRing" stroke="url(#hangGrad)" stroke-width="12" fill="transparent" r="132" cx="145" cy="145"/>
                                     <defs>
-                                        <linearGradient id="hangRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                            <stop offset="0%" stop-color="#00ff87"/>
-                                            <stop offset="100%" stop-color="#60efff"/>
-                                        </linearGradient>
-                                        <linearGradient id="hangPrepGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                            <stop offset="0%" stop-color="#ff9f0a"/>
-                                            <stop offset="100%" stop-color="#ff453a"/>
+                                        <linearGradient id="hangGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                            <stop offset="0%" stop-color="#00e5ff"/>
+                                            <stop offset="100%" stop-color="#05ffa1"/>
                                         </linearGradient>
                                     </defs>
                                 </svg>
-                                <div class="hang-timer-content">
+                                <div class="hang-dial-content">
                                     <div class="hang-status-hint" id="hangStatusHint">READY</div>
-                                    <div class="hang-digit" id="hangTimerValue">0</div>
-                                    <div class="hang-unit" id="hangTimerUnit">SECONDS</div>
-                                    <div class="hang-tap-hint" id="hangTapStopHint">拍击圆盘立即结算</div>
+                                    <div class="hang-mega-digit" id="hangTimerValue">0</div>
+                                    <div class="hang-unit-hint" id="hangTimerUnit">SECONDS</div>
+                                    <div class="hang-tap-note" id="hangTapStopHint">拍击圆盘立即结算</div>
                                 </div>
                             </div>
+                        </div>
 
-                            <div class="countdown-presets hidden" id="hangPresetContainer" style="margin: 6px auto;">
-                                <div class="preset-chip" onclick="setHangCountdownTime(15)">15秒</div>
-                                <div class="preset-chip active" onclick="setHangCountdownTime(30)">30秒</div>
-                                <div class="preset-chip" onclick="setHangCountdownTime(45)">45秒</div>
-                                <div class="preset-chip" onclick="setHangCountdownTime(60)">60秒</div>
-                                <div class="preset-chip" onclick="setHangCountdownTime(90)">90秒</div>
+                        <!-- 次数直录卡片 -->
+                        <div id="hangRepsContainer" class="hidden" style="margin:12px 0;">
+                            <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">单组有效拉起次数:</div>
+                            <div class="stepper-cluster" style="margin-bottom:10px;">
+                                <button class="stepper-btn" onclick="stepHangReps(-1)">−</button>
+                                <input type="number" id="hangRepsInput" value="8" min="1" max="100" style="width:70px; text-align:center; font-size:22px; font-weight:bold; color:var(--cyan-accent);">
+                                <button class="stepper-btn" onclick="stepHangReps(1)">+</button>
                             </div>
+                            <div class="chip-preset-row">
+                                <button class="preset-chip" id="chipRep3" onclick="setQuickHangReps(3)">3次</button>
+                                <button class="preset-chip" id="chipRep5" onclick="setQuickHangReps(5)">5次</button>
+                                <button class="preset-chip active" id="chipRep8" onclick="setQuickHangReps(8)">8次</button>
+                                <button class="preset-chip" id="chipRep10" onclick="setQuickHangReps(10)">10次</button>
+                                <button class="preset-chip" id="chipRep12" onclick="setQuickHangReps(12)">12次</button>
+                                <button class="preset-chip" id="chipRep15" onclick="setQuickHangReps(15)">15次</button>
+                            </div>
+                        </div>
 
-                            <div class="compact-control-bar" style="margin-top:8px;">
-                                <button class="btn btn-secondary" onclick="resetHangAll()" style="flex:1;">↺ 复位</button>
-                                <button class="btn btn-primary" id="hangMainActionBtn" onclick="toggleHangStart()" style="flex:2; font-size:16px;">开始计时</button>
-                            </div>
+                        <!-- 控制按键 -->
+                        <div class="compact-control-bar">
+                            <button class="btn btn-secondary" onclick="resetHangAll()">重置</button>
+                            <button class="btn btn-primary" id="hangMainActionBtn" onclick="toggleHangStart()" style="font-size:16px; padding:12px 34px;">
+                                开始计时 (全程报数)
+                            </button>
                         </div>
                     </div>
                 </div>
 
                 <!-- 5. 即时出征台 -->
-                <div id="workout_deck" class="tab-content">
+                <div id="workout_deck" class="tab-content active">
+                    <!-- 勤务状态横幅 -->
                     <div class="duty-status-banner" id="dutyBanner">
                         <div style="flex:1; min-width:200px;">
                             <div class="duty-info-title">
                                 <span>👮 战巡勤务状态</span>
                                 <span class="badge badge-police" id="deckDutyBadge">计算中...</span>
-                                <span class="shift-override-selector" id="shiftOverrideSelector">
-                                    <span style="font-size:10px; color:var(--text-dim);">📝</span>
+                                <span class="shift-override-selector" id="shiftOverrideSelector" data-hud-tip="【手动修正班次】：当计算有差异时在此手动修正。">
                                     <select id="shiftOverrideSelect" onchange="applyShiftOverride(this.value)">
                                         <option value="">自动</option>
                                         <option value="0">24h值班</option>
@@ -319,69 +314,102 @@
                                 </span>
                                 <span id="overrideBadge" class="shift-override-badge hidden">⚡手动</span>
                             </div>
-                            <div id="deckDutyDesc" style="font-size:12px; color:#c8d7e6; margin-top:3px;">对齐 08:30 换日铁律</div>
+                            <div id="deckDutyDesc" style="font-size:12px; color:#c8d7e6; margin-top:3px;">
+                                对齐 08:30 交接班铁律
+                            </div>
                         </div>
                         <div id="deckRecommendedPlan" style="text-align:right; flex-shrink:0;"></div>
                     </div>
 
+                    <!-- 预设方案舱 -->
                     <div class="cyber-card" style="--card-accent: var(--green-accent);">
                         <div class="card-header">
-                            <span>🗃️ 战术预设方案舱 (PRESET 1-5)</span>
+                            <span>🗃️ 战术预设方案舱 (PRESET PLANS 1-5)</span>
                             <div style="display:flex; gap:6px;">
                                 <button class="btn btn-sm btn-outline" onclick="renameCurrentPlan()">✏️ 重命名</button>
-                                <button class="btn btn-sm btn-danger" onclick="clearWorkoutQueue()">🗑 一键清空</button>
+                                <button class="btn btn-sm btn-danger" onclick="clearWorkoutQueue()">🗑 清空</button>
                             </div>
                         </div>
                         <div class="preset-plan-bar" id="presetPlanBar"></div>
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px;">
-                            <span style="font-size:11px; color:var(--text-muted);">💡 方案项目点击【▶️开始】将自动调起专属语音战钟！</span>
-                            <button class="btn btn-sm btn-success" onclick="saveActiveQueueToCurrentPlan()">💾 覆盖保存此方案</button>
+                            <span style="font-size:11.5px; color:var(--text-muted);">
+                                💡 点击方案即刻载入，也可修改参数后点右侧按钮封存覆盖。
+                            </span>
+                            <button class="btn btn-sm btn-success" onclick="saveActiveQueueToCurrentPlan()">
+                                💾 保存为当前方案
+                            </button>
                         </div>
                     </div>
 
+                    <!-- 动作装备库快捷选取 -->
                     <div class="cyber-card" style="--card-accent: var(--orange-primary);">
-                        <div class="card-header" style="flex-wrap: wrap; gap: 8px;">
-                            <span>⚡ 动作法门库 (点击添加入列)</span>
+                        <div class="card-header">
+                            <div>
+                                <span>⚡ 动作法门装备库 (点击添加入列)</span>
+                                <span style="font-size:11px; color:var(--text-muted); margin-left:6px;">(自动记忆最新参数)</span>
+                            </div>
                             <button class="btn btn-sm btn-cyan" onclick="openArsenalModal()">⚙️ 打造/调谐法门库</button>
                         </div>
                         <div class="arsenal-picker-grid" id="arsenalPickerGrid"></div>
                     </div>
 
+                    <!-- 当前出征队列工作台 -->
                     <div class="cyber-card" style="--card-accent: var(--cyan-accent);">
                         <div class="card-header">
-                            <span>🎯 今日出征训练序列</span>
+                            <span>🎯 今日出征训练序列 (ACTIVE DEPLOYMENT)</span>
                             <span class="badge badge-cyan" id="activeQueueCountBadge">0 个项目就绪</span>
                         </div>
                         <div id="workoutQueueContainer"></div>
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; flex-wrap:wrap; gap:10px;">
                             <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted);">
-                                预估做功：<span id="queueTotalReps" style="color:var(--orange-primary); font-weight:bold;">0</span> | TUT: <span id="queueTotalTut" style="color:var(--cyan-accent); font-weight:bold;">0</span>s
+                                今日预估做功：<span id="queueTotalReps" style="color:var(--orange-primary); font-weight:bold;">0</span> |
+                                有效TUT：<span id="queueTotalTut" style="color:var(--cyan-accent); font-weight:bold;">0</span> 秒
                             </div>
-                            <button class="btn btn-success" onclick="saveAllQueueLogs()">🚀 全量封存入今日战功</button>
+                            <button class="btn btn-success" onclick="saveAllQueueLogs()">
+                                🚀 一键全量封存入今日战功
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- 6. 气血中枢 -->
+                <!-- 6. 气血中枢 (仪表盘) -->
                 <div id="dashboard" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--amber-accent);">
                         <div class="card-header">
-                            <span>🎯 当前执行战令总参</span>
-                            <button class="btn btn-sm btn-outline" onclick="switchTab('settings')">⚙️ 调整指标</button>
+                            <span>🎯 当前执行战令总参 (MASTER TARGET)</span>
+                            <button class="btn btn-sm btn-outline" onclick="switchTab('settings')">⚙️ 调谐指标</button>
                         </div>
                         <div class="stat-grid" id="dashboardPlanGrid"></div>
                     </div>
 
                     <div class="stat-grid">
-                        <div class="stat-box" style="--box-color: var(--orange-primary);"><div class="stat-number" id="statTodayCount">0</div><div class="stat-label">今日实修 (次)</div></div>
-                        <div class="stat-box" style="--box-color: var(--cyan-accent);"><div class="stat-number" id="statTodayTypes" style="font-size:14px; line-height:24px;">-</div><div class="stat-label">今日法门</div></div>
-                        <div class="stat-box" style="--box-color: var(--green-accent);"><div class="stat-number" id="statWeekCount">0</div><div class="stat-label">7日破阵总和</div></div>
-                        <div class="stat-box" style="--box-color: var(--amber-accent);"><div class="stat-number" id="statWeekDays">0</div><div class="stat-label">出勤天数</div></div>
-                        <div class="stat-box" style="--box-color: var(--pink-accent);"><div class="stat-number" id="statStreak">0</div><div class="stat-label">连贯周天</div></div>
+                        <div class="stat-box" style="--box-color: var(--orange-primary);">
+                            <div class="stat-number" id="statTodayCount">0</div>
+                            <div class="stat-label">今日实修 (次)</div>
+                        </div>
+                        <div class="stat-box" style="--box-color: var(--cyan-accent);">
+                            <div class="stat-number" id="statTodayTypes" style="font-size:15px; line-height:24px;">-</div>
+                            <div class="stat-label">今日法门</div>
+                        </div>
+                        <div class="stat-box" style="--box-color: var(--green-accent);">
+                            <div class="stat-number" id="statWeekCount">0</div>
+                            <div class="stat-label">7日破阵总和</div>
+                        </div>
+                        <div class="stat-box" style="--box-color: var(--amber-accent);">
+                            <div class="stat-number" id="statWeekDays">0</div>
+                            <div class="stat-label">出勤天数</div>
+                        </div>
+                        <div class="stat-box" style="--box-color: var(--pink-accent);">
+                            <div class="stat-number" id="statStreak">0</div>
+                            <div class="stat-label">连贯周天 (日)</div>
+                        </div>
                     </div>
 
                     <div class="cyber-card">
-                        <div class="card-header"><span>⚡ 近期实录动态</span><button class="btn btn-sm btn-cyan" onclick="switchTab('log')">完整册卷 ➔</button></div>
+                        <div class="card-header">
+                            <span>⚡ 近期实录动态</span>
+                            <button class="btn btn-sm btn-cyan" onclick="switchTab('log')">完整册卷 ➔</button>
+                        </div>
                         <div id="recentLogs">暂无实录</div>
                     </div>
                 </div>
@@ -391,37 +419,33 @@
                     <div class="cyber-card">
                         <div class="card-header">
                             <span>🥋 淬体实录矩阵</span>
-                            <div>
+                            <div style="display:flex; gap:6px;">
                                 <button class="btn btn-sm btn-outline" onclick="exportCSV()">📊 导出CSV</button>
-                                <button class="btn btn-sm btn-primary" onclick="showLogForm()">+ 手工填报</button>
+                                <button class="btn btn-sm btn-primary" onclick="showLogForm()">+ 手工填写入册</button>
                             </div>
                         </div>
                         <div id="logList"></div>
                     </div>
 
+                    <!-- 手动填报抽屉 -->
                     <div id="logForm" class="cyber-card hidden" style="--card-accent: var(--green-accent);">
-                        <div class="card-header" id="logFormTitle">📝 手工填报实录</div>
+                        <div class="card-header" id="logFormTitle">📝 手工录入实修记录</div>
                         <div class="row">
                             <div class="flex-1"><label>日期</label><input type="date" id="logDate"></div>
                             <div class="flex-1"><label>功法门类</label><input type="text" id="logType"></div>
                             <div class="flex-1"><label>组数</label><input type="number" id="logSets" value="1"></div>
                         </div>
                         <div class="row">
-                            <div class="flex-2"><label>点数</label><input type="text" id="logReps" oninput="calcLogTotal()"></div>
-                            <div class="flex-1"><label>总数</label><input type="text" id="logTotal" readonly></div>
-                            <div class="flex-1"><label>心率</label><input type="text" id="logHeart" value="未知"></div>
+                            <div class="flex-2"><label>点数/时长 (如: 10,10 或 30min)</label><input type="text" id="logReps" oninput="calcLogTotal()"></div>
+                            <div class="flex-1"><label>总计 (自动核算)</label><input type="text" id="logTotal" readonly></div>
+                            <div class="flex-1"><label>心脉 (BPM)</label><input type="text" id="logHeart" value="未知"></div>
                         </div>
                         <div class="row">
-                            <div class="flex-1"><label>起始时间</label><input type="text" id="logStartTimeStr"></div>
-                            <div class="flex-1"><label>结束时间</label><input type="text" id="logEndTimeStr"></div>
-                            <div class="flex-1"><label>时长(分)</label><input type="number" id="logDuration" value="15"></div>
+                            <div class="flex-1"><label>起始时间戳</label><input type="text" id="logStartTimeStr"></div>
+                            <div class="flex-1"><label>结束时间戳</label><input type="text" id="logEndTimeStr"></div>
+                            <div class="flex-1"><label>耗时(MIN)</label><input type="number" id="logDuration" value="15"></div>
                         </div>
-                        <div class="row">
-                            <div class="flex-1"><label>RPE (1-10)</label><input type="number" id="logRpe" placeholder="8"></div>
-                            <div class="flex-2"><label>勤务标注</label><input type="text" id="logDutyTag"></div>
-                        </div>
-                        <div class="form-group"><label>心得备注</label><textarea id="logNote"></textarea></div>
-                        <div class="form-group"><label>照片配图</label><input type="file" id="logImage" accept="image/*" onchange="previewLogImage(event)"><div id="logImagePreview"></div></div>
+                        <div class="form-group"><label>备注与心法感悟</label><textarea id="logNote"></textarea></div>
                         <input type="hidden" id="logEditId">
                         <div class="row">
                             <button class="btn btn-success" onclick="saveManualLog()">封存入册</button>
@@ -430,43 +454,228 @@
                     </div>
                 </div>
 
-                <!-- 8. 易筋推演 -->
+                <!-- 8. 易筋推演 (AI PROMPT BUILDER) -->
                 <div id="analysis" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--cyan-accent);">
-                        <div class="card-header"><span>⚡ AI PROMPT BUILDER</span></div>
+                        <div class="card-header">
+                            <span>⚡ 智能参谋推演指令生成器 (AI PROMPT BUILDER 2.0)</span>
+                        </div>
                         <div class="row">
+                            <div class="flex-1">
+                                <label>时空跨度</label>
+                                <select id="analysisPresetRange" onchange="applyPresetRange(this.value)">
+                                    <option value="7">最近 7 天实录 (推荐)</option>
+                                    <option value="3">最近 3 天突击</option>
+                                    <option value="15">最近 15 天</option>
+                                    <option value="30">最近 30 天</option>
+                                    <option value="all">全量历史</option>
+                                </select>
+                            </div>
                             <div class="flex-1"><label>起始日期</label><input type="date" id="analysisStart" onchange="refreshPromptData()"></div>
                             <div class="flex-1"><label>截止日期</label><input type="date" id="analysisEnd" onchange="refreshPromptData()"></div>
                         </div>
-                        <button class="btn btn-primary" style="margin-top:10px;" onclick="copyDynamicPrompt()">📋 复制深度 AI 推演 Prompt</button>
-                        <div class="prompt-box" id="analysisPrompt" style="margin-top:10px;">聚合中...</div>
+                        <div style="display:flex; gap:10px; margin-top:12px;">
+                            <button class="btn btn-primary" onclick="copyDynamicPrompt()">📋 复制深度 AI 推演 Prompt</button>
+                            <button class="btn btn-outline" onclick="copyAnalysisData()">📊 仅复制原始 JSON</button>
+                        </div>
+                        <div style="margin-top:12px;">
+                            <label>生成的深度战术提示词预览</label>
+                            <div class="prompt-box" id="analysisPrompt">正在聚合时空全维数据...</div>
+                        </div>
+                    </div>
+
+                    <!-- 历史与封存 -->
+                    <div class="cyber-card" style="--card-accent: var(--green-accent);">
+                        <div class="card-header">
+                            <span>📥 封存 AI 参谋长复盘训令</span>
+                        </div>
+                        <div class="row">
+                            <div class="flex-2"><label>训令标题</label><input type="text" id="aiReportTitle"></div>
+                            <div class="flex-1"><label>对应时段</label><input type="text" id="aiReportPeriod" readonly></div>
+                        </div>
+                        <div class="form-group" style="margin-top:8px;">
+                            <label>粘贴 AI 全文回复</label>
+                            <textarea id="aiReportInput" rows="6"></textarea>
+                        </div>
+                        <button class="btn btn-success" onclick="saveAiReport()">💾 封存入库</button>
+                    </div>
+
+                    <div class="cyber-card">
+                        <div class="card-header">
+                            <span>📖 历次 AI 参谋训令卷宗库</span>
+                            <span class="badge badge-cyan" id="aiReportCount">0 篇</span>
+                        </div>
+                        <div class="row" style="margin-bottom:10px;">
+                            <div class="flex-2">
+                                <select id="aiReportSelector" onchange="viewAiReport(this.value)">
+                                    <option value="">-- 选择查阅历史阶段总结 --</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-danger btn-sm" onclick="deleteCurrentAiReport()">🗑 删除此篇</button>
+                        </div>
+                        <div id="aiReportDisplayView" class="ai-report-view hidden"></div>
+                    </div>
+
+                    <div class="cyber-card">
+                        <div class="card-header"><span>📈 所选时空核心做功趋势</span></div>
+                        <div id="anaTrend"></div>
                     </div>
                 </div>
 
-                <!-- 9. 淬体日记 -->
+                <!-- 9. 淬体随笔日记 -->
                 <div id="diary" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--amber-accent);">
                         <div class="card-header">
-                            <span>📖 淬体随笔 · 战意感悟录</span>
+                            <span>📖 真武淬体随笔 · 战意感悟录</span>
                             <div style="display:flex; gap:6px;">
                                 <button class="btn btn-sm btn-primary" onclick="showDiaryForm()">+ 撰写新随笔</button>
                                 <button class="btn btn-sm btn-cyan" onclick="openChatWorkbench()">🧠 AI聊天精修导入</button>
                             </div>
                         </div>
+
+                        <div class="diary-toolbar">
+                            <div class="diary-toolbar-row">
+                                <span class="diary-stat" id="diaryCountText">在册 0 篇</span>
+                                <input type="text" id="diarySearchInput" placeholder="🔍 检索题名、心境、标签与正文..." oninput="renderDiaryList()">
+                            </div>
+                            <div class="diary-toolbar-row">
+                                <span class="diary-chips" id="diaryFilterChips">
+                                    <button type="button" class="diary-chip" data-dfilter="all" onclick="setDiaryFilter('all')">全部 <b>0</b></button>
+                                    <button type="button" class="diary-chip" data-dfilter="ai" onclick="setDiaryFilter('ai')">🧠 AI聊天 <b>0</b></button>
+                                    <button type="button" class="diary-chip" data-dfilter="manual" onclick="setDiaryFilter('manual')">✍️ 手写 <b>0</b></button>
+                                    <button type="button" class="diary-chip" data-dfilter="cards" onclick="setDiaryFilter('cards')">📇 卡片结构 <b>0</b></button>
+                                </span>
+                                <span class="diary-chips" id="diaryViewChips">
+                                    <button type="button" class="diary-chip" data-dview="entry" onclick="setDiaryView('entry')">📖 按篇浏览</button>
+                                    <button type="button" class="diary-chip" data-dview="card" onclick="setDiaryView('card')">📇 按卡浏览</button>
+                                </span>
+                                <select id="diarySortSelect" onchange="setDiarySort(this.value)">
+                                    <option value="dateDesc">日期 ↓ 新→旧</option>
+                                    <option value="dateAsc">日期 ↑ 旧→新</option>
+                                    <option value="lenDesc">字数 ↓ 多→少</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="diaryBatchBar" class="diary-batch-toolbar hidden">
+                            <span style="color:var(--amber-accent); font-weight:bold;">☑ 已选 <span id="diarySelCount">0</span> 篇</span>
+                            <button class="btn btn-danger btn-sm" onclick="diaryBatchDelete()">🗑 批量删除</button>
+                            <button class="btn btn-outline btn-sm" onclick="diarySelectAll()">✅ 全选</button>
+                            <button class="btn btn-outline btn-sm" onclick="diarySelClear()">✕ 取消</button>
+                        </div>
+
                         <div id="diaryCardList"></div>
                     </div>
 
-                    <div id="chatWorkbenchCard" class="cyber-card hidden" style="--card-accent: var(--cyan-accent);">
-                        <div class="card-header"><span>🧠 AI聊天精修流水线</span><button class="btn btn-sm btn-outline" onclick="collapseWorkbench()">✕ 收起</button></div>
-                        <div class="chat-wb">
-                            <textarea id="chatRawInput" rows="5" oninput="onRawInput()" placeholder="粘贴原始聊天..."></textarea>
-                            <div style="display:flex; gap:6px; margin:6px 0;">
-                                <button class="btn btn-primary btn-sm" onclick="autoSplitByDelimiter()">⚡ 自动成卡</button>
-                                <button class="btn btn-outline btn-sm" onclick="startManualComposer()">✋ 手动断点</button>
+                    <!-- 沉浸式精读器 -->
+                    <div id="diaryReaderCard" class="cyber-card hidden" style="--card-accent: var(--cyan-accent);">
+                        <div class="card-header">
+                            <span id="diaryReaderTitle">📖 随笔精读</span>
+                            <div style="display:flex; gap:6px;">
+                                <button class="btn btn-sm btn-outline" onclick="closeDiaryReader()">✕ 退出精读</button>
                             </div>
-                            <div id="aiComposerCard" class="hidden">
+                        </div>
+                        <div class="diary-meta" id="diaryReaderMeta" style="margin-bottom:12px;"></div>
+                        <div id="diaryReaderBody" class="diary-reader-body"></div>
+                    </div>
+
+                    <!-- 日记表单 -->
+                    <div id="diaryFormCard" class="cyber-card hidden" style="--card-accent: var(--green-accent);">
+                        <div class="card-header" id="diaryFormTitle">✍️ 记叙今日淬体心得</div>
+                        <input type="hidden" id="diaryEditId">
+                        <div class="row">
+                            <div class="flex-1"><label>日期</label><input type="date" id="diaryDate"></div>
+                            <div class="flex-1">
+                                <label>心境</label>
+                                <select id="diaryMood">
+                                    <option value="⚡ 状态极佳·气血充沛">⚡ 状态极佳·气血充沛</option>
+                                    <option value="🩸 血糖平稳·波澜不惊">🩸 血糖平稳·波澜不惊</option>
+                                    <option value="👮 值班熬夜·交感应激">👮 值班熬夜·交感应激</option>
+                                    <option value="🛡️ 轮休调元·筋膜舒缓">🛡️ 轮休调元·筋膜舒缓</option>
+                                    <option value="🌧️ 疲态偶现·坚忍破障">🌧️ 疲态偶现·坚忍破障</option>
+                                </select>
+                            </div>
+                            <div class="flex-1"><label>标签</label><input type="text" id="diaryTag" placeholder="AI复盘,..."></div>
+                        </div>
+                        <div class="form-group" style="margin-top:8px;">
+                            <label>随笔题名 *</label>
+                            <input type="text" id="diaryTitle">
+                        </div>
+                        <div class="form-group">
+                            <label>正文内容 *</label>
+                            <textarea id="diaryContent" rows="6"></textarea>
+                        </div>
+                        <div class="row">
+                            <button class="btn btn-success" onclick="saveDiaryEntry()">💾 封存入卷</button>
+                            <button class="btn btn-outline" onclick="cancelDiaryForm()">放弃</button>
+                        </div>
+                    </div>
+
+                    <!-- AI聊天精修流水线工作台 -->
+                    <div id="chatWorkbenchCard" class="cyber-card hidden" style="--card-accent: var(--cyan-accent);">
+                        <div class="card-header">
+                            <span>🧠 AI聊天记录 → 淬体随笔 · 精修流水线</span>
+                            <div style="display:flex; gap:6px;">
+                                <button class="btn btn-sm btn-amber" id="aiFullBtn" onclick="toggleAiImmersive()">⛶ 全屏精修</button>
+                                <button class="btn btn-sm btn-outline" onclick="collapseWorkbench()">✕ 收起工作台</button>
+                            </div>
+                        </div>
+                        <div class="chat-wb">
+                            <div class="raw-box">
+                                <div class="raw-box-bar">
+                                    <span class="hint">① 粘贴原始聊天记录</span>
+                                    <span class="raw-box-actions">
+                                        <span class="raw-count" id="rawCharCount">0 字</span>
+                                        <button class="seg-mini" id="rawViewBtn" onclick="toggleRawView()">📖 阅读视图</button>
+                                        <button class="seg-mini" onclick="openFullRawView()">⛶ 全屏查看</button>
+                                    </span>
+                                </div>
+                                <textarea id="chatRawInput" rows="6" oninput="onRawInput()" placeholder="把整段聊天原样粘贴到此..."></textarea>
+                                <div id="chatRawReader" class="raw-reader hidden"></div>
+
+                                <div class="chat-delim-bar">
+                                    <span class="hint" style="flex-basis:100%;">分隔标志句：</span>
+                                    <input type="text" id="chatDelimiterInput" style="flex:1; min-width:220px;">
+                                    <button class="btn btn-outline btn-sm" onclick="resetChatDelimiter()">↺ 恢复默认</button>
+                                </div>
+                                <div style="display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">
+                                    <button class="btn btn-primary btn-sm" onclick="autoSplitByDelimiter()">⚡ 自动按分隔符成卡</button>
+                                    <button class="btn btn-outline btn-sm" onclick="startManualComposer()">✋ 完全手动标断点</button>
+                                    <button class="btn btn-outline btn-sm" onclick="loadChatSampleAndParse()">🧪 载入示例</button>
+                                    <button class="btn btn-outline btn-sm" onclick="clearRawInput()">清空</button>
+                                </div>
+                            </div>
+
+                            <!-- ② 意群成卡编辑器 -->
+                            <div id="aiComposerCard" class="hidden" style="border-top:1px dashed rgba(255,184,0,0.35); padding-top:12px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                                    <span style="font-family:var(--font-tech); font-weight:700; color:var(--amber-accent);">📇 意群成卡编辑器</span>
+                                    <div style="display:flex; gap:6px;">
+                                        <button class="btn btn-outline btn-sm" onclick="composerCollapseAll()">📦 折叠全部</button>
+                                        <button class="btn btn-outline btn-sm" onclick="composerAddBlock()">＋ 追加一段</button>
+                                        <button class="btn btn-success btn-sm" onclick="composerFinish()">💾 完成 → 入册日记</button>
+                                        <button class="btn btn-outline btn-sm" onclick="composerClose()">✕ 收起</button>
+                                    </div>
+                                </div>
                                 <div id="aiComposerBody"></div>
-                                <button class="btn btn-success btn-sm" style="margin-top:8px;" onclick="composerFinish()">💾 完成并入册日记</button>
+                            </div>
+
+                            <!-- ③ 最终预览 -->
+                            <div id="wbPreviewWrap" class="hidden" style="border-top:1px dashed rgba(0,229,255,0.25); padding-top:10px;">
+                                <div class="row">
+                                    <div class="flex-2"><label>题名</label><input type="text" id="chatDraftTitle"></div>
+                                    <div class="flex-1"><label>日期</label><input type="date" id="chatDraftDate"></div>
+                                </div>
+                                <div id="chatVaultPreview" style="margin:10px 0 6px 0;"></div>
+                                <div class="form-group" style="margin-top:8px;">
+                                    <label>可修订正文</label>
+                                    <textarea id="chatDraftContent" rows="5"></textarea>
+                                </div>
+                                <div class="row">
+                                    <button class="btn btn-amber" onclick="composerFromPreview()">📇 意群编辑器改卡</button>
+                                    <button class="btn btn-success" onclick="saveEntryFromWorkbench()">💾 保存修订到日记</button>
+                                    <button class="btn btn-outline" onclick="workbenchRedo()">🗑 重来</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -475,28 +684,48 @@
                 <!-- 10. 真武秘卷 -->
                 <div id="knowledge" class="tab-content">
                     <div class="cyber-card">
-                        <div class="card-header"><span>📜 真武秘卷</span><button class="btn btn-sm btn-primary" onclick="showKnowledgeForm()">+ 著新篇</button></div>
+                        <div class="card-header">
+                            <span>📜 真武秘卷 · 运动控糖与眼底安全总纲</span>
+                            <button class="btn btn-sm btn-primary" onclick="showKnowledgeForm()">+ 著新篇</button>
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="knowledgeSearch" placeholder="🔍 检索心法奥义..." oninput="renderKnowledge()">
+                        </div>
                         <div id="knowledgeList"></div>
+                    </div>
+
+                    <div id="knowledgeForm" class="cyber-card hidden">
+                        <div class="card-header">✏️ 著录心法</div>
+                        <div class="row">
+                            <div class="flex-1"><label>分类</label><input type="text" id="kCategory"></div>
+                            <div class="flex-2"><label>标题 *</label><input type="text" id="kTitle"></div>
+                        </div>
+                        <div class="form-group"><label>详解</label><textarea id="kContent" rows="5"></textarea></div>
+                        <input type="hidden" id="kEditId">
+                        <div class="row">
+                            <button class="btn btn-success" onclick="saveKnowledge()">刊刻铭记</button>
+                            <button class="btn btn-outline" onclick="cancelKnowledgeForm()">撤销</button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 11. 灵枢配置 (完整表单，杜绝空指针) -->
+                <!-- 11. 灵枢配置 -->
                 <div id="settings" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--amber-accent);">
-                        <div class="card-header"><span>🎯 天罡战令 · 全局宏观目标</span><span class="badge badge-orange">联动生效</span></div>
+                        <div class="card-header">
+                            <span>🎯 天罡战令 · 全局宏观目标</span>
+                        </div>
                         <div class="row">
-                            <div class="flex-1"><label>俯卧撑单组基准 (次/组)</label><input type="number" id="planPushupSetReps" min="5" step="1" onchange="saveMasterPlan()"></div>
-                            <div class="flex-1"><label>单日总破阵目标 (次/天)</label><input type="number" id="planDailyPushupTarget" min="10" step="5" onchange="saveMasterPlan()"></div>
-                            <div class="flex-1"><label>单次淬体时长 (分钟)</label><input type="number" id="planSessionDurationMin" min="5" step="5" onchange="saveMasterPlan()"></div>
+                            <div class="flex-1"><label>俯卧撑单组基准 (次/组)</label><input type="number" id="planPushupSetReps" onchange="saveMasterPlan()"></div>
+                            <div class="flex-1"><label>单日总破阵目标 (次/天)</label><input type="number" id="planDailyPushupTarget" onchange="saveMasterPlan()"></div>
+                            <div class="flex-1"><label>单次淬体时长 (分钟)</label><input type="number" id="planSessionDurationMin" onchange="saveMasterPlan()"></div>
                         </div>
                         <div class="row" style="margin-top:8px;">
-                            <div class="flex-1"><label>慢降时长 (秒)</label><input type="number" id="planEccentricDownSec" min="1" step="0.5" onchange="saveMasterPlan()"></div>
-                            <div class="flex-1"><label>向心爆发 (秒)</label><input type="number" id="planConcentricUpSec" min="0.5" step="0.5" onchange="saveMasterPlan()"></div>
-                            <div class="flex-1"><label>靠墙静蹲 (秒/组)</label><input type="number" id="planWallSquatTargetSec" min="10" step="5" onchange="saveMasterPlan()"></div>
+                            <div class="flex-1"><label>慢降时长 (秒)</label><input type="number" id="planEccentricDownSec" onchange="saveMasterPlan()"></div>
+                            <div class="flex-1"><label>向心爆发 (秒)</label><input type="number" id="planConcentricUpSec" onchange="saveMasterPlan()"></div>
+                            <div class="flex-1"><label>靠墙静蹲 (秒/组)</label><input type="number" id="planWallSquatTargetSec" onchange="saveMasterPlan()"></div>
                         </div>
-                        <div style="margin-top:10px;">
-                            <button class="btn btn-primary btn-sm" onclick="saveMasterPlan()">💾 保存宏观战令</button>
-                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="saveMasterPlan()" style="margin-top:10px;">💾 保存宏观战令</button>
                     </div>
 
                     <div class="cyber-card" style="--card-accent: var(--police-blue);">
@@ -506,16 +735,13 @@
                             <div class="flex-1">
                                 <label>基准日班次</label>
                                 <select id="shiftAnchorType" onchange="saveSettings()">
-                                    <option value="0">24h值班 (当天08:30 → 次日08:30)</option>
-                                    <option value="1">轮休 (在家休息)</option>
-                                    <option value="2">轮休 (在家休息)</option>
-                                    <option value="3">日班 (当天08:30 → 当晚22:30)</option>
-                                    <option value="4">轮休 (在家休息)</option>
+                                    <option value="0">24h值班</option>
+                                    <option value="1">轮休</option>
+                                    <option value="2">轮休</option>
+                                    <option value="3">日班</option>
+                                    <option value="4">轮休</option>
                                 </select>
                             </div>
-                        </div>
-                        <div style="margin-top:8px; font-size:11px; color:var(--text-muted);">
-                            💡 设置一个已知班次的日期作为锚点，系统将按 5 天周期自动推算后续排班。
                         </div>
                     </div>
 
@@ -527,169 +753,123 @@
                             <div class="flex-1"><label>身高 (CM)</label><input type="number" id="userHeight" step="0.1" onchange="saveSettings()"></div>
                             <div class="flex-1"><label>抗糖年数 (年)</label><input type="number" id="userDiabetes" step="1" onchange="saveSettings()"></div>
                         </div>
-                        <div class="form-group" style="margin-top:8px;">
-                            <label>推算最大心率</label>
-                            <input type="text" id="userMaxHr" readonly style="background:#090807; color:var(--cyan-accent); font-weight:bold;">
-                        </div>
-                        <button class="btn btn-primary" onclick="saveSettings()">封存本命档案</button>
-                    </div>
-
-                    <div class="cyber-card">
-                        <div class="card-header"><span>🗑 危险区</span></div>
-                        <button class="btn btn-danger btn-sm" onclick="if(confirm('警告：此举将清空全部出征方案、实录与 AI 总结，确定？')) resetAll()">彻底归元重置战阙</button>
+                        <button class="btn btn-primary" onclick="saveSettings()" style="margin-top:10px;">封存本命档案</button>
                     </div>
                 </div>
 
             </div>
 
-            <!-- 右侧机甲座舱 (视窗全屏拖拽 + 悬浮赛博 HUD 控制坞) -->
+            <!-- 右侧：全息战神视窗 -->
             <div class="right-mecha-dock" id="rightMechaDock">
                 <div class="tactical-grid"></div>
                 <div class="crosshair ch-tl"></div>
                 <div class="crosshair ch-br"></div>
-                <div class="telemetry-tag tt-top">
-                    // SYSTEM: HOLO-WARFORGE PRO<br>
-                    // ENGINE: DEXIE.JS HD STREAM<br>
-                    // STATUS: SMART AUTO-FIT ACTIVE
-                </div>
-                <div class="telemetry-tag tt-bottom">
-                    // MOUSE DRAG: PAN VIEWPORT<br>
-                    // WHEEL: DYNAMIC ZOOM | DBLCLICK: FIT
-                </div>
-
-                <!-- 核心可交互全息视窗 -->
-                <div class="mecha-interactive-viewport" id="mechaViewport" ondblclick="fitHeroToViewport()" title="双击快速自适应居中全貌">
+                <div class="mecha-interactive-viewport" id="mechaViewport">
                     <div class="mecha-img-wrapper" id="mechaWrapper"></div>
                 </div>
 
-                <!-- 底部机甲 HUD 悬浮控制坞 -->
-                <div class="mecha-hud-toolbar" id="mechaHudToolbar">
-                    <button type="button" class="mecha-hud-btn" onclick="zoomHero(0.2)" title="放大视角">🔍＋</button>
-                    <button type="button" class="mecha-hud-btn" onclick="zoomHero(-0.2)" title="缩小视角">🔍−</button>
-                    <button type="button" class="mecha-hud-btn mecha-hud-btn-active" onclick="fitHeroToViewport()" title="智能计算比例，完整呈现整张壁纸">🎯 适配全貌</button>
-                    <button type="button" class="mecha-hud-btn" onclick="setHeroScale100()" title="1:1 像素原图">1:1</button>
-                    <button type="button" class="mecha-hud-btn" onclick="resetHeroTransform()" title="居中复位">↺ 复位</button>
-                    <label class="mecha-hud-btn mecha-upload-btn" title="投入本地超清大图 (Dexie持久化)">
-                        🖼️ 换图
-                        <input type="file" accept="image/*" style="display:none;" onchange="handleHeroFileSelect(event)">
-                    </label>
-                    <button type="button" class="mecha-hud-btn mecha-hud-btn-danger" onclick="clearHeroImage()" title="恢复真武力场">🗑️ 清除</button>
+                <div class="mecha-fab-container" id="mechaFabContainer">
+                    <div class="mecha-fab-menu" id="mechaFabMenu">
+                        <button class="fab-menu-item" onclick="zoomHero(0.15)"><span>🔍 放大</span><span>+15%</span></button>
+                        <button class="fab-menu-item" onclick="zoomHero(-0.15)"><span>🔍 缩小</span><span>-15%</span></button>
+                        <button class="fab-menu-item" onclick="resetHeroTransform()"><span>↺ 复位</span><span>100%</span></button>
+                        <label class="fab-menu-item" style="cursor:pointer;">
+                            <span>🖼️ 载入大图</span>
+                            <input type="file" accept="image/*" style="display:none;" onchange="handleHeroFileSelect(event)">
+                        </label>
+                    </div>
+                    <div class="mecha-fab-trigger" onclick="toggleMechaFabMenu()" title="调谐战神壁纸">🎛️</div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- 悬浮说明窗口 -->
+    <!-- 智能说明悬浮 HUD -->
     <div id="tacticalHudTooltip">
-        <div class="tip-header"><span id="hudTipTitle">【战法参谋】</span><span class="tip-close-btn" onclick="hideHudTooltip()">✕</span></div>
+        <div class="tip-header">
+            <span id="hudTipTitle">【战法参谋】</span>
+            <span class="tip-close-btn" onclick="hideHudTooltip()">✕</span>
+        </div>
         <div id="hudTipContent">说明加载中...</div>
     </div>
 
-    <!-- 悬挂/引体战报结算弹窗 (记录 vs 放弃) -->
-    <div class="modal-overlay" id="hangResultModal" onclick="closeHangResultModal(false)">
-        <div class="modal-card" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <div class="modal-title">🔥 引体 / 悬挂战报结算</div>
-                <button class="close-btn" onclick="closeHangResultModal(false)">&times;</button>
-            </div>
-            <div class="result-content">
-                <div class="result-rank-tag" id="hangResultRank">钢铁抓握力</div>
-                <div class="result-score" id="hangResultScore">0<span style="font-size: 2rem; color: #9aa0a6;">s</span></div>
-                <div class="result-desc" id="hangResultDesc">每一次做功都在重塑筋膜！</div>
-
-                <div style="display:flex; gap:10px; margin-top:14px;">
-                    <button class="btn btn-secondary" style="flex:1; height:52px;" onclick="closeHangResultModal(false)">
-                        🗑️ 放弃 (未完整/不计入)
-                    </button>
-                    <button class="btn btn-primary" style="flex:2; height:52px;" onclick="closeHangResultModal(true)">
-                        💾 记录 (有效封存入册)
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 悬挂偏好设置弹窗 -->
-    <div class="modal-overlay" id="hangSettingsModal" onclick="closeHangSettings()">
-        <div class="modal-card" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <div class="modal-title">引体 / 悬挂设置</div>
-                <button class="close-btn" onclick="closeHangSettings()">&times;</button>
-            </div>
-            <div class="setting-item">
-                <div class="setting-label-row">
-                    <div><div class="setting-name">就位准备倒计时</div><div class="setting-desc">走步抓杠、锁定肩胛骨缓冲时间</div></div>
-                    <div class="stepper-control">
-                        <button class="stepper-btn" onclick="stepHangPrepTime(-1)">−</button>
-                        <div class="stepper-value" id="hangPrepValueDisplay">10s</div>
-                        <button class="stepper-btn" onclick="stepHangPrepTime(1)">+</button>
-                    </div>
-                </div>
-                <div class="prep-chips">
-                    <button class="prep-chip-btn" onclick="selectHangPrepChip(5)">5秒</button>
-                    <button class="prep-chip-btn active" onclick="selectHangPrepChip(10)">10秒</button>
-                    <button class="prep-chip-btn" onclick="selectHangPrepChip(15)">15秒</button>
-                    <button class="prep-chip-btn" onclick="selectHangPrepChip(20)">20秒</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 法门工坊弹窗 -->
+    <!-- 弹窗：法门工坊模态窗口 -->
     <div class="modal-mask" id="arsenalManageModal">
-        <div class="modal-body" style="max-width: 520px; max-height: 85vh; overflow-y: auto;">
-            <div class="card-header"><span style="color:var(--orange-primary);">⚙️ 动作装备库工坊</span><span style="cursor:pointer;" onclick="closeArsenalModal()">✕</span></div>
-            <div id="arsenalManageList" style="max-height: 160px; overflow-y: auto; margin-bottom: 10px; background:#0d0c0a; padding:6px;"></div>
-            <input type="hidden" id="arsFormId">
-            <div class="row">
-                <div class="flex-1"><label>图标</label><input type="text" id="arsFormIcon" value="⚡"></div>
-                <div class="flex-2"><label>名称</label><input type="text" id="arsFormName"></div>
+        <div class="modal-body" style="max-width: 540px; max-height: 85vh; overflow-y: auto;">
+            <div class="card-header" style="margin-bottom:10px;">
+                <span style="color:var(--orange-primary);">⚙️ 动作法门装备库 · 战术工坊</span>
+                <span style="cursor:pointer; color:var(--pink-accent);" onclick="closeArsenalModal()">✕</span>
             </div>
-            <div class="row" style="margin-top:6px;">
-                <div class="flex-1"><label>默认组数</label><input type="number" id="arsFormSets" value="2"></div>
-                <div class="flex-1"><label>默认点数</label><input type="text" id="arsFormReps" value="10"></div>
-            </div>
-            <div style="display:flex; justify-content:space-between; margin-top:10px;">
-                <button class="btn btn-outline btn-sm" onclick="resetArsenalForm()">清空新建</button>
-                <button class="btn btn-success btn-sm" onclick="saveArsenalItem()">💾 保存入库</button>
+            <div id="arsenalManageList" style="max-height: 180px; overflow-y: auto; margin-bottom: 14px;"></div>
+            <div style="border-top:1px dashed rgba(255,122,0,0.3); padding-top:10px;">
+                <input type="hidden" id="arsFormId">
+                <div class="row">
+                    <div class="flex-1"><label>图标</label><input type="text" id="arsFormIcon" value="⚡"></div>
+                    <div class="flex-2"><label>名称 *</label><input type="text" id="arsFormName"></div>
+                </div>
+                <div class="row" style="margin-top:6px;">
+                    <div class="flex-1"><label>默认组数</label><input type="number" id="arsFormSets" value="2"></div>
+                    <div class="flex-1"><label>默认点数</label><input type="text" id="arsFormReps" value="10"></div>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:12px;">
+                    <button class="btn btn-outline btn-sm" onclick="resetArsenalForm()">↺ 清空</button>
+                    <button class="btn btn-success btn-sm" onclick="saveArsenalItem()">💾 保存法门</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- 全屏查看层与轻量通知条 -->
+    <!-- 弹窗：引体/悬挂战报结算模态 -->
+    <div class="modal-mask" id="hangResultModal">
+        <div class="modal-body" style="text-align:center;">
+            <div class="card-header">
+                <span style="color:var(--cyan-accent);">🔥 悬挂破阵战报</span>
+            </div>
+            <div class="hang-rank-pill" id="hangResultRank">天罡神力</div>
+            <div class="hang-score-text" id="hangResultScore">0s</div>
+            <p id="hangResultDesc" style="color:var(--text-muted); font-size:13px; margin-bottom:16px;">
+                前臂与小臂筋膜正在急速重塑！
+            </p>
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <button class="btn btn-success" onclick="closeHangResultModal(true)">💾 封存入实录</button>
+                <button class="btn btn-outline" onclick="closeHangResultModal(false)">✕ 放弃本次</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 全屏阅读覆盖层 -->
     <div id="fullViewOverlay" class="full-view-overlay hidden" onclick="if (event.target === this) closeFullView();">
-        <div class="full-view-bar"><span id="fullViewTitle">⛶ 全屏查看</span><button class="btn btn-outline btn-sm" onclick="closeFullView()">✕ 退出</button></div>
+        <div class="full-view-bar">
+            <span id="fullViewTitle">⛶ 全屏精读</span>
+            <div class="full-view-nav hidden" id="fullViewNav">
+                <button class="btn btn-outline btn-sm" onclick="fullViewStep(-1)">◀ 上一张</button>
+                <select id="fullViewJump" class="full-view-jump" onchange="fullViewJumpTo(this.value)"></select>
+                <span id="fullViewPos" class="full-view-pos">1 / 1</span>
+                <button class="btn btn-outline btn-sm" onclick="fullViewStep(1)">下一张 ▶</button>
+            </div>
+            <div class="full-view-tools">
+                <button class="btn btn-outline btn-sm" onclick="adjustFullViewFont(-1)">A-</button>
+                <button class="btn btn-outline btn-sm" onclick="adjustFullViewFont(1)">A+</button>
+                <button class="btn btn-outline btn-sm" onclick="closeFullView()">✕ 退出</button>
+            </div>
+        </div>
         <div id="fullViewBody" class="full-view-body md-render"></div>
     </div>
+
     <div id="appToast" class="app-toast hidden"></div>
 
-    <!-- 脚本模块按依赖加载 -->
-    <script src="js/state.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/storage.js"></script>
-    <script src="js/duty.js"></script>
-    <script src="js/timer.js"></script>
-    <script src="js/pnf-timer.js"></script>
-    <script src="js/hang-timer.js"></script>
-    <script src="js/arsenal-queue.js"></script>
-    <script src="js/quick-action.js"></script>
-    <script src="js/diary-workbench.js"></script>
-    <script src="js/views.js"></script>
-    <script src="js/app.js"></script>
-
-    <!-- PWA Service Worker 离线缓存注册核心 -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
-                    .then(reg => {
-                        console.log('✅ 天罡战阙 PWA 离线服务已就绪，作用域:', reg.scope);
-                    })
-                    .catch(err => {
-                        console.error('❌ PWA 离线注册失败:', err);
-                    });
-            });
-        }
-    </script>
+    <!-- 脚本拓扑链 -->
+    <script src="js/state.js?v=20261003"></script>
+    <script src="js/utils.js?v=20261003"></script>
+    <script src="js/duty.js?v=20261003"></script>
+    <script src="js/storage.js?v=20261003"></script>
+    <script src="js/arsenal-queue.js?v=20261003"></script>
+    <script src="js/quick-action.js?v=20261003"></script>
+    <script src="js/timer.js?v=20261003"></script>
+    <script src="js/hang-timer.js?v=20261003"></script>
+    <script src="js/pnf-timer.js?v=20261003"></script>
+    <script src="js/views.js?v=20261003"></script>
+    <script src="js/diary-workbench.js?v=20261003"></script>
+    <script src="js/app.js?v=20261003"></script>
 </body>
 </html>
