@@ -19,26 +19,35 @@ function switchTab(t) {
 
     document.body.classList.toggle('diary-wide', t === 'diary');
 
-    // 针对指定面板触发重新排版
-    if (t === 'analysis' && typeof refreshPromptData === 'function') refreshPromptData();
-    if (t === 'workout_deck' && typeof renderWorkoutQueue === 'function') renderWorkoutQueue();
-    if (t === 'action_quick' && typeof renderActionQuickPanel === 'function') renderActionQuickPanel();
+    try {
+        if (t === 'analysis' && typeof refreshPromptData === 'function') refreshPromptData();
+        if (t === 'workout_deck' && typeof renderWorkoutQueue === 'function') renderWorkoutQueue();
+        if (t === 'action_quick' && typeof renderActionQuickPanel === 'function') renderActionQuickPanel();
+        if (t === 'stretch_timer' && typeof resetStretchDisplayUI === 'function') resetStretchDisplayUI();
+    } catch (e) {
+        console.error('switchTab dispatch error:', e);
+    }
 
     const d = document.getElementById('leftDeckPane');
     if (d) d.scrollTop = 0;
 }
 
 function renderAll() {
-    if (typeof renderArsenalPicker === 'function') renderArsenalPicker();
-    if (typeof renderPresetPlanBar === 'function') renderPresetPlanBar();
-    if (typeof renderWorkoutQueue === 'function') renderWorkoutQueue();
-    if (typeof renderDashboard === 'function') renderDashboard();
-    if (typeof renderLogs === 'function') renderLogs();
-    if (typeof renderKnowledge === 'function') renderKnowledge();
-    if (typeof renderSettings === 'function') renderSettings();
-    if (typeof normalizeDiarySources === 'function') normalizeDiarySources();
-    if (typeof renderDiaryList === 'function') renderDiaryList();
-    if (typeof renderDutyStatus === 'function') renderDutyStatus();
+    try {
+        if (typeof renderArsenalPicker === 'function') renderArsenalPicker();
+        if (typeof renderPresetPlanBar === 'function') renderPresetPlanBar();
+        if (typeof renderWorkoutQueue === 'function') renderWorkoutQueue();
+        if (typeof renderActionQuickPanel === 'function') renderActionQuickPanel();
+        if (typeof renderDashboard === 'function') renderDashboard();
+        if (typeof renderLogs === 'function') renderLogs();
+        if (typeof renderKnowledge === 'function') renderKnowledge();
+        if (typeof renderSettings === 'function') renderSettings();
+        if (typeof normalizeDiarySources === 'function') normalizeDiarySources();
+        if (typeof renderDiaryList === 'function') renderDiaryList();
+        if (typeof renderDutyStatus === 'function') renderDutyStatus();
+    } catch (e) {
+        console.error('renderAll error:', e);
+    }
 }
 
 async function init() {
@@ -63,18 +72,26 @@ async function init() {
                     arsenal: parsed.arsenal || null
                 };
 
-                // 数据自愈升级：如果旧数据默认离心次数还是8，或未设定，平滑升级为10次
+                // 数据自愈升级：平滑规范化离心与压腿参数
                 if (data.settings.eccentricDefaultReps === undefined || data.settings.eccentricDefaultReps === 8) {
                     data.settings.eccentricDefaultReps = 10;
                 }
                 if (!data.settings.eccentricDefaultSets) {
                     data.settings.eccentricDefaultSets = 2;
                 }
+                if (!data.settings.stretchDefaultSets) {
+                    data.settings.stretchDefaultSets = 2;
+                }
                 if (!data.settings.stretchDefaultDuration) {
                     data.settings.stretchDefaultDuration = 60;
                 }
-                if (!data.settings.stretchSwitchRestSec) {
-                    data.settings.stretchSwitchRestSec = 30;
+                // 旧的单一“换边间隔”键退役：左右脚间隔与组间间隔分开，默认 10s / 20s
+                delete data.settings.stretchSwitchRestSec;
+                if (data.settings.stretchSwapRestSec === undefined) {
+                    data.settings.stretchSwapRestSec = 10;
+                }
+                if (data.settings.stretchSetRestSec === undefined) {
+                    data.settings.stretchSetRestSec = 20;
                 }
 
                 if (Array.isArray(data.workoutQueue)) {
@@ -111,8 +128,11 @@ async function init() {
         if (typeof renderAiReportList === 'function') renderAiReportList();
         if (typeof renderDutyStatus === 'function') renderDutyStatus();
 
-        // 默认定位到慢跑
+        // 默认定位到慢跑巡航
         switchTab('action_quick');
+
+        // 数据载入后再同步压腿参数（组数/左右脚间隔/组间间隔）
+        if (typeof resetStretchDisplayUI === 'function') resetStretchDisplayUI();
 
     } catch (err) {
         console.error('App 初始化严重故障:', err);

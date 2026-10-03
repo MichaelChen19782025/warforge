@@ -39,7 +39,8 @@ const SHIFT_CYCLE_TABLE = [
     { name: '轮休 (休)', isWork: false, desc: '全天在家休息调养', dutyTag: '休假在家' }
 ];
 
-let data = {
+// 顶层 var：即 window.data，供各模块的 window.data 守卫与外部读取
+var data = {
     settings: {
         birthday: '1978-04-19',
         weight: 63,
@@ -62,9 +63,12 @@ let data = {
         eccentricDefaultSets: 2,
         eccentricDefaultReps: 10,
         eccentricRestSec: 60,
-        // 压腿默认拉伸60秒，换边休整默认30秒（可自由修改并持久化保存）
+        // 压腿：左右脚各压一次算一组；单侧默认60秒，默认2组
         stretchDefaultDuration: 60,
-        stretchSwitchRestSec: 30
+        stretchDefaultSets: 2,
+        // 左右脚之间的间隔默认10秒；每组之间的间隔默认20秒（均可自由修改并持久化）
+        stretchSwapRestSec: 10,
+        stretchSetRestSec: 20
     },
     masterPlan: {
         pushupSetReps: 40,

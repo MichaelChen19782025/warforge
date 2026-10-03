@@ -105,9 +105,11 @@ function firstTextLine(s) {
 }
 
 function diarySortCompare(a, b) {
-    if (diarySort === 'dateAsc') return a.date.localeCompare(b.date);
+    const aDate = String(a.date || '');
+    const bDate = String(b.date || '');
+    if (diarySort === 'dateAsc') return aDate.localeCompare(bDate);
     if (diarySort === 'lenDesc') return diaryCharCount(b) - diaryCharCount(a);
-    return b.date.localeCompare(a.date);
+    return bDate.localeCompare(aDate);
 }
 
 function diaryEntryCardHTML(d) {
@@ -496,7 +498,11 @@ function renderLogs() {
         container.innerHTML = '<div style="color:var(--text-dim); padding:14px 0;">实录本册尚无数据。</div>';
         return;
     }
-    const sorted = [...data.logs].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+    const sorted = [...data.logs].sort((a, b) => {
+        const dateComp = (b.date || '').localeCompare(a.date || '');
+        if (dateComp !== 0) return dateComp;
+        return (b.createdAt || '').localeCompare(a.createdAt || '');
+    });
     container.innerHTML = sorted.map(l => `
         <div class="item-strip">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -693,7 +699,8 @@ function renderAiReportList() {
     data.aiReports.forEach(r => {
         const opt = document.createElement('option');
         opt.value = r.id;
-        opt.textContent = `[${r.savedAt.slice(0,10)}] ${r.title}`;
+        const savedDateStr = (r.savedAt && typeof r.savedAt === 'string') ? r.savedAt.slice(0, 10) : '近期';
+        opt.textContent = `[${savedDateStr}] ${r.title}`;
         sel.appendChild(opt);
     });
 }
@@ -786,7 +793,6 @@ function deleteKnowledge(id) {
 
 function cancelKnowledgeForm() { document.getElementById('knowledgeForm')?.classList.add('hidden'); }
 
-// 【关键防错】：全局宏观战令设置渲染（全字段安全注入）
 function renderMasterPlanSettings() {
     const p = data.masterPlan;
     if (!p) return;
@@ -831,7 +837,6 @@ function saveMasterPlan() {
     alert('🎯 全局宏观战令已保存！');
 }
 
-// 【关键防错】：灵枢档案与排班设置渲染（全字段安全注入）
 function renderSettings() {
     const s = data.settings;
     if (!s) return;

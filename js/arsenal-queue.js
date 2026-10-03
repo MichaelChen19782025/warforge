@@ -75,7 +75,8 @@ function addArsenalToQueue(actionId) {
     const mem = data.customParamCache[actionId] || {};
     const isAerobic = baseAct.type === 'aerobic';
     const isEccentric = (actionId === 'act_pushup_ecc');
-    const defaultReps = isEccentric ? (data.settings?.eccentricDefaultReps || 10) : (baseAct.defaultReps || (isAerobic ? '25min' : '10'));
+    const isStretch = (actionId === 'act_pnf_stretch');
+    const defaultReps = isEccentric ? (data.settings?.eccentricDefaultReps || 10) : (isStretch ? '60s' : (baseAct.defaultReps || (isAerobic ? '25min' : '10')));
 
     const newItem = {
         id: 'wq_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
@@ -85,7 +86,7 @@ function addArsenalToQueue(actionId) {
         type: baseAct.type || 'strength',
         sets: mem.sets !== undefined ? mem.sets : (isAerobic ? 1 : baseAct.defaultSets || 2),
         reps: mem.reps !== undefined ? mem.reps : defaultReps,
-        total: mem.total !== undefined ? mem.total : (baseAct.total || 20),
+        total: mem.total !== undefined ? mem.total : (isStretch ? 240 : (baseAct.total || 20)),
         downSec: isAerobic ? 0 : (mem.downSec !== undefined ? mem.downSec : (baseAct.downSec || 0)),
         upSec: isAerobic ? 0 : (mem.upSec !== undefined ? mem.upSec : (baseAct.upSec || 0)),
         heart: mem.heart || '未知',
@@ -138,11 +139,12 @@ function startWorkoutItem(itemId) {
         if (typeof switchStretchMode === 'function') {
             switchStretchMode('countdown');
         }
-        if (typeof setStretchCountdownSec === 'function') {
-            setStretchCountdownSec(parseInt(item.total) || data.settings?.stretchDefaultDuration || 60);
+        if (typeof setStretchSets === 'function') {
+            setStretchSets(item.sets || data.settings?.stretchDefaultSets || 2);
         }
-        if (typeof startStretchTimer === 'function') {
-            startStretchTimer();
+        if (typeof setStretchLegDuration === 'function') {
+            const singleDuration = parseInt(item.reps) || data.settings?.stretchDefaultDuration || 60;
+            setStretchLegDuration(singleDuration);
         }
         return;
     }
@@ -260,7 +262,6 @@ function autoCommitLogEntry(item) {
     }
 }
 
-// 核心参数更新并自适应持久化记忆
 function updateQueueItemParam(itemId, field, val) {
     const item = data.workoutQueue.find(x => x.id === itemId);
     if (!item) return;
@@ -322,7 +323,6 @@ function renderWorkoutQueueStats() {
     if (tutEl) tutEl.textContent = sumTut;
 }
 
-// 完整渲染出征台（彻底修复字符转义语法错误，完整呈现所有参数编辑控件）
 function renderWorkoutQueue() {
     const container = document.getElementById('workoutQueueContainer');
     const countBadge = document.getElementById('activeQueueCountBadge');

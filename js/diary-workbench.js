@@ -942,7 +942,7 @@ function normalizeStructured(s) {
     }
     if (typeof s.summary === 'string') {
         const clean = stripBlankLines(s.summary);
-        if (clean !== null) sec.summary = clean;
+        if (clean !== null) s.summary = clean;
     }
     return s;
 }
