@@ -1,16 +1,15 @@
 /**
 天罡洗髓 · 引体全能舱 & 极限悬挂战钟 (PRO)
-具备特性：
 默认直接采用【极限悬挂】(静态单杠死磕)；
-【核心创新·开始按键首屏中置】：无论屏幕多小，大表盘与正中央巨型开始按钮均直接可见，绝不滚屏！
-【核心创新·10阶倒序脱杠延时校准补偿】：当点击结束正向读秒时，自动弹出 10 阶精准扣减延时的选择板
-（以当前停表数先减 4 秒为首个按钮，如 40 秒停表产生：36, 35, 34, 33, 32, 31, 30, 29, 28, 27），
-单手轻触即可完美核销脱杠双手落地与点击手机的时间差！
+【首屏中置主战区】：大表盘与正中央巨型开始按钮直接可见，无需滚屏；
+【10阶倒序脱杠延时校准补偿】：停表后自动弹出扣减延时的选择板
+（以停表数先减 4 秒为最高值，如 40 秒停表产生：36, 35, 34, 33, 32, 31, 30, 29, 28, 27），
+单手轻触即可核销脱杠落地与点击手机的时间差！
 */
 (function () {
-const hangState = {
-variant: 'hang', // 默认变式锁定为极限悬挂
-mode: 'stopwatch', // 'stopwatch' | 'countdown' | 'reps'
+var hangState = {
+variant: 'hang', // 默认极限悬挂
+mode: 'stopwatch', // 默认正向秒表
 status: 'idle', // 'idle' | 'prep' | 'running'
 prepDuration: 10,
 countdownTarget: 30,
@@ -20,10 +19,10 @@ intervalId: null,
 repsCount: 8,
 capturedRawSeconds: 0
 };
-let audioCtx = null;
+var audioCtx = null;
 function getAudioCtx() {
     if (!audioCtx) {
-        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        var AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (AudioContextClass) audioCtx = new AudioContextClass();
     }
     if (audioCtx && audioCtx.state === 'suspended') {
@@ -32,12 +31,16 @@ function getAudioCtx() {
     return audioCtx;
 }
 
-function playBeep(freq = 800, duration = 0.05, type = 'sine', volume = 0.12) {
+function playBeep(freq, duration, type, volume) {
+    freq = freq || 800;
+    duration = duration || 0.05;
+    type = type || 'sine';
+    volume = volume || 0.12;
     try {
-        const ctx = getAudioCtx();
+        var ctx = getAudioCtx();
         if (!ctx) return;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, ctx.currentTime);
         gain.gain.setValueAtTime(volume, ctx.currentTime);
@@ -53,7 +56,7 @@ function speakVoice(text) {
     if (!('speechSynthesis' in window)) return;
     try {
         window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance(text);
+        var utter = new SpeechSynthesisUtterance(text);
         utter.lang = 'zh-CN';
         utter.rate = 1.35;
         utter.pitch = 1.05;
@@ -66,16 +69,16 @@ function loadPb() {
         if (data.settings.hangPrepDuration) hangState.prepDuration = data.settings.hangPrepDuration;
         if (data.settings.hangCountdownTarget) hangState.countdownTarget = data.settings.hangCountdownTarget;
     }
-    const stored = localStorage.getItem(`hang_pb_${hangState.variant}`);
-    const pb = stored ? parseInt(stored) : (data?.settings?.hangBestRecord || 0);
+    var stored = localStorage.getItem('hang_pb_' + hangState.variant);
+    var pb = stored ? parseInt(stored) : (data && data.settings && data.settings.hangBestRecord ? data.settings.hangBestRecord : 0);
     updatePbDisplay(pb);
 }
 
 function savePb(newScore) {
-    const stored = localStorage.getItem(`hang_pb_${hangState.variant}`);
-    const curBest = stored ? parseInt(stored) : 0;
+    var stored = localStorage.getItem('hang_pb_' + hangState.variant);
+    var curBest = stored ? parseInt(stored) : 0;
     if (newScore > curBest) {
-        localStorage.setItem(`hang_pb_${hangState.variant}`, newScore);
+        localStorage.setItem('hang_pb_' + hangState.variant, newScore);
         if (window.data && data.settings) {
             data.settings.hangBestRecord = newScore;
             saveData();
@@ -87,33 +90,37 @@ function savePb(newScore) {
 }
 
 function updatePbDisplay(pb) {
-    const pbEl = document.getElementById('hangPbDisplay');
+    var pbEl = document.getElementById('hangPbDisplay');
     if (pbEl) {
-        pbEl.textContent = `🏆 PB: ${pb || 0}s`;
+        pbEl.textContent = '🏆 PB: ' + (pb || 0) + 's';
     }
 }
 
-// 变式切换
 window.switchHangVariant = function (variant) {
     hangState.variant = variant;
-    ['standard', 'wide', 'hang'].forEach(v => {
-        const chip = document.getElementById(`chipVar${v.charAt(0).toUpperCase() + v.slice(1)}`);
+    var variants = ['standard', 'wide', 'hang'];
+    for (var i = 0; i < variants.length; i++) {
+        var v = variants[i];
+        var chipId = 'chipVar' + v.charAt(0).toUpperCase() + v.slice(1);
+        var chip = document.getElementById(chipId);
         if (chip) chip.classList.toggle('active', v === variant);
-    });
+    }
     loadPb();
 };
 
-// 模式切换
 window.switchHangMode = function (mode) {
     hangState.mode = mode;
-    ['reps', 'stopwatch', 'countdown'].forEach(m => {
-        const btn = document.getElementById(`hangMode${m.charAt(0).toUpperCase() + m.slice(1)}`);
+    var modes = ['reps', 'stopwatch', 'countdown'];
+    for (var i = 0; i < modes.length; i++) {
+        var m = modes[i];
+        var btnId = 'hangMode' + m.charAt(0).toUpperCase() + m.slice(1);
+        var btn = document.getElementById(btnId);
         if (btn) btn.classList.toggle('active', m === mode);
-    });
+    }
 
-    const repsContainer = document.getElementById('hangRepsContainer');
-    const timerWrap = document.getElementById('hangTimerDialWrap');
-    const presetContainer = document.getElementById('hangPresetContainer');
+    var repsContainer = document.getElementById('hangRepsContainer');
+    var timerWrap = document.getElementById('hangTimerDialWrap');
+    var presetContainer = document.getElementById('hangPresetContainer');
 
     if (mode === 'reps') {
         if (repsContainer) repsContainer.classList.remove('hidden');
@@ -128,62 +135,65 @@ window.switchHangMode = function (mode) {
     resetHangAll();
 };
 
-// 次数直录
 window.setQuickHangReps = function (reps) {
     hangState.repsCount = parseInt(reps) || 8;
-    const input = document.getElementById('hangRepsInput');
+    var input = document.getElementById('hangRepsInput');
     if (input) input.value = hangState.repsCount;
-    [3, 5, 8, 10, 12].forEach(r => {
-        const chip = document.getElementById(`chipRep${r}`);
+    var presets = [3, 5, 8, 10, 12];
+    for (var i = 0; i < presets.length; i++) {
+        var r = presets[i];
+        var chip = document.getElementById('chipRep' + r);
         if (chip) chip.classList.toggle('active', r === hangState.repsCount);
-    });
+    }
 };
 
 window.stepHangReps = function (delta) {
-    const next = Math.max(1, Math.min(100, hangState.repsCount + delta));
+    var next = Math.max(1, Math.min(100, hangState.repsCount + delta));
     window.setQuickHangReps(next);
 };
 
 window.commitHangReps = function () {
     getAudioCtx();
-    const input = document.getElementById('hangRepsInput');
-    const count = input ? (parseInt(input.value) || hangState.repsCount) : hangState.repsCount;
+    var input = document.getElementById('hangRepsInput');
+    var count = input ? (parseInt(input.value) || hangState.repsCount) : hangState.repsCount;
     playBeep(1200, 0.2);
-    speakVoice(`做功 ${count} 次`);
+    speakVoice('做功 ' + count + ' 次');
 
     if (window.data && data.logs) {
-        const duty = (typeof getDutyShiftInfo === 'function') ? getDutyShiftInfo() : { dutyDateStr: new Date().toISOString().slice(0, 10), shift: { name: '日常' } };
-        const typeName = hangState.variant === 'hang' ? '极限悬挂' : (hangState.variant === 'wide' ? '阔引体' : '标准引体');
+        var duty = (typeof getDutyShiftInfo === 'function') ? getDutyShiftInfo() : { dutyDateStr: new Date().toISOString().slice(0, 10), shift: { name: '日常' } };
+        var typeName = hangState.variant === 'hang' ? '极限悬挂' : (hangState.variant === 'wide' ? '阔引体' : '标准引体');
 
         data.logs.push({
             id: 'l_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
             date: duty.dutyDateStr,
             type: typeName,
             sets: 1,
-            reps: `${count}次`,
+            reps: count + '次',
             total: count,
             isAerobic: false,
             isIsometric: (hangState.variant === 'hang'),
             heart: '未知',
             duration: 5,
             rpe: 8,
-            dutyTag: `${duty.shift.name} (归属${duty.dutyDateStr.slice(5)})`,
+            dutyTag: duty.shift.name + ' (归属' + duty.dutyDateStr.slice(5) + ')',
             startTimeStamp: (typeof getFullTimestamp === 'function') ? getFullTimestamp() : new Date().toISOString(),
             endTimeStamp: (typeof getFullTimestamp === 'function') ? getFullTimestamp() : new Date().toISOString(),
             downSec: 0,
             upSec: 0,
             tutSeconds: count * 3,
-            note: `${typeName}直录：有效做功 ${count} 次。`,
+            note: typeName + '直录：有效做功 ' + count + ' 次。',
             createdAt: new Date().toISOString()
         });
 
         if (Array.isArray(data.workoutQueue)) {
-            data.workoutQueue = data.workoutQueue.filter(x => !(x.actionId === 'act_pullup' || x.actionId === 'act_pullup_wide' || x.actionId === 'act_hang'));
+            data.workoutQueue = data.workoutQueue.filter(function (x) {
+                return !(x.actionId === 'act_pullup' || x.actionId === 'act_pullup_wide' || x.actionId === 'act_hang');
+            });
         }
 
         saveData();
         if (typeof renderAll === 'function') renderAll();
-        if (typeof showToast === 'function') showToast(`✅ ${typeName} ${count} 次已记录入册！`);
+        if (typeof showToast === 'function') showToast('✅ ' + typeName + ' ' + count + ' 次已记录入册！');
     }
 };
 
@@ -193,35 +203,36 @@ window.discardHangReps = function () {
 };
 
 window.setHangCountdownTime = function (sec) {
-    const val = parseInt(sec) || 30;
+    var val = parseInt(sec) || 30;
     hangState.countdownTarget = val;
     if (window.data && data.settings) {
         data.settings.hangCountdownTarget = val;
         saveData();
     }
-    const chips = document.querySelectorAll('#hangPresetContainer .preset-chip');
-    chips.forEach(c => {
-        c.classList.toggle('active', c.textContent.includes(`${val}秒`));
+    var chips = document.querySelectorAll('#hangPresetContainer .preset-chip');
+    chips.forEach(function (c) {
+        c.classList.toggle('active', c.textContent.indexOf(val + '秒') !== -1);
     });
     if (hangState.status === 'idle') {
         updateDialValue(hangState.countdownTarget, 'TARGET SEC');
     }
 };
 
-function updateDialValue(val, unit = 'SECONDS') {
-    const valEl = document.getElementById('hangTimerValue');
-    const unitEl = document.getElementById('hangTimerUnit');
+function updateDialValue(val, unit) {
+    unit = unit || 'SECONDS';
+    var valEl = document.getElementById('hangTimerValue');
+    var unitEl = document.getElementById('hangTimerUnit');
     if (valEl) valEl.textContent = val;
     if (unitEl) unitEl.textContent = unit;
 }
 
 function setRingProgress(percent) {
-    const circle = document.getElementById('hangProgressRing');
+    var circle = document.getElementById('hangProgressRing');
     if (!circle) return;
-    const radius = circle.r.baseVal.value;
-    const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (percent / 100) * circumference;
-    circle.style.strokeDasharray = `${circumference} ${circumference}`;
+    var radius = circle.r.baseVal.value;
+    var circumference = 2 * Math.PI * radius;
+    var offset = circumference - (percent / 100) * circumference;
+    circle.style.strokeDasharray = circumference + ' ' + circumference;
     circle.style.strokeDashoffset = offset;
 }
 
@@ -229,8 +240,8 @@ function onHangTimerTick() {
     if (hangState.status === 'prep') {
         hangState.timeRemaining--;
         updateDialValue(Math.max(0, hangState.timeRemaining), 'PREPARING');
-        const pct = Math.max(0, (hangState.timeRemaining / hangState.prepDuration) * 100);
-        setRingProgress(pct);
+        var pctPrep = Math.max(0, (hangState.timeRemaining / hangState.prepDuration) * 100);
+        setRingProgress(pctPrep);
 
         if (hangState.timeRemaining > 0) {
             playBeep(700, 0.08);
@@ -245,9 +256,9 @@ function onHangTimerTick() {
     if (hangState.status === 'running' && hangState.mode === 'stopwatch') {
         hangState.elapsedSeconds++;
         updateDialValue(hangState.elapsedSeconds, 'SECONDS');
-        const ringTarget = Math.max(60, hangState.countdownTarget || 30);
-        const pct = Math.min(100, (hangState.elapsedSeconds / ringTarget) * 100);
-        setRingProgress(pct);
+        var ringTarget = Math.max(60, hangState.countdownTarget || 30);
+        var pctSw = Math.min(100, (hangState.elapsedSeconds / ringTarget) * 100);
+        setRingProgress(pctSw);
         speakVoice(String(hangState.elapsedSeconds));
         return;
     }
@@ -255,8 +266,8 @@ function onHangTimerTick() {
     if (hangState.status === 'running' && hangState.mode === 'countdown') {
         hangState.timeRemaining--;
         updateDialValue(Math.max(0, hangState.timeRemaining), 'REMAINING');
-        const pct = Math.max(0, (hangState.timeRemaining / hangState.countdownTarget) * 100);
-        setRingProgress(pct);
+        var pctCd = Math.max(0, (hangState.timeRemaining / hangState.countdownTarget) * 100);
+        setRingProgress(pctCd);
 
         if (hangState.timeRemaining > 0) {
             speakVoice(String(hangState.timeRemaining));
@@ -269,8 +280,8 @@ function onHangTimerTick() {
 
 function startActualHanging() {
     hangState.status = 'running';
-    const hintEl = document.getElementById('hangStatusHint');
-    const tapHint = document.getElementById('hangTapStopHint');
+    var hintEl = document.getElementById('hangStatusHint');
+    var tapHint = document.getElementById('hangTapStopHint');
     if (hintEl) hintEl.textContent = 'HANGING NOW';
     if (tapHint) tapHint.textContent = '拍击圆盘立即结算';
 
@@ -301,7 +312,7 @@ function stopHangInterval() {
 }
 
 // ================================================================
-// ★ 核心创新点：10阶倒序脱杠延时校准机制
+// ★ 核心创新点：10阶倒序脱杠延时校准机制 (纯净字符串拼接，杜绝嵌套模板)
 // ================================================================
 function triggerStopAndCalibration() {
     stopHangInterval();
@@ -309,35 +320,32 @@ function triggerStopAndCalibration() {
         ? hangState.elapsedSeconds
         : Math.max(0, hangState.countdownTarget - hangState.timeRemaining);
 
-    // 如果时长非常短 (<5s)，无需弹窗，直接结算
     if (hangState.capturedRawSeconds < 5) {
         settleFinalScore(hangState.capturedRawSeconds);
         return;
     }
 
+    var modal = document.getElementById('hangLatencyModal');
+    var rawEl = document.getElementById('hangLatencyRawScore');
+    var container = document.getElementById('hangLatencyButtonsContainer');
+    var origBtn = document.getElementById('hangLatencyOriginalBtn');
+
+    if (rawEl) rawEl.textContent = hangState.capturedRawSeconds + 's';
+    if (origBtn) origBtn.textContent = '⏱️ 按停表原时 (' + hangState.capturedRawSeconds + 's) 记录';
+
     // 以停表数先减 4 秒为最高值，倒序生成 10 个按钮
     // 例如 40 秒停表产生：36, 35, 34, 33, 32, 31, 30, 29, 28, 27
-    const modal = document.getElementById('hangLatencyModal');
-    const rawEl = document.getElementById('hangLatencyRawScore');
-    const container = document.getElementById('hangLatencyButtonsContainer');
-    const origBtn = document.getElementById('hangLatencyOriginalBtn');
-
-    if (rawEl) rawEl.textContent = `${hangState.capturedRawSeconds}s`;
-    if (origBtn) origBtn.textContent = `⏱️ 按停表原时 (${hangState.capturedRawSeconds}s) 记录`;
-
-    const startCalib = Math.max(1, hangState.capturedRawSeconds - 4);
-    const buttons = [];
-    for (let i = 0; i < 10; i++) {
-        const sec = startCalib - i;
-        if (sec > 0) buttons.push(sec);
+    var startCalib = Math.max(1, hangState.capturedRawSeconds - 4);
+    var htmlButtons = '';
+    for (var i = 0; i < 10; i++) {
+        var sec = startCalib - i;
+        if (sec > 0) {
+            htmlButtons += '<button type="button" class="latency-chip-btn" onclick="confirmHangLatency(' + sec + ')">' + sec + 's</button>';
+        }
     }
 
     if (container) {
-        container.innerHTML = buttons.map(s => `
-            <button type="button" class="latency-chip-btn" onclick="confirmHangLatency(${s})">
-                ${s}s
-            </button>
-        `).join('');
+        container.innerHTML = htmlButtons;
     }
 
     if (modal) modal.classList.add('active');
@@ -345,16 +353,16 @@ function triggerStopAndCalibration() {
 }
 
 window.confirmHangLatency = function (selectedSeconds) {
-    const modal = document.getElementById('hangLatencyModal');
+    var modal = document.getElementById('hangLatencyModal');
     if (modal) modal.classList.remove('active');
 
-    const finalScore = selectedSeconds > 0 ? selectedSeconds : hangState.capturedRawSeconds;
-    speakVoice(`校准完成，确认为 ${finalScore} 秒！`);
+    var finalScore = selectedSeconds > 0 ? selectedSeconds : hangState.capturedRawSeconds;
+    speakVoice('校准完成，确认为 ' + finalScore + ' 秒！');
     settleFinalScore(finalScore);
 };
 
 window.cancelHangLatencyModal = function () {
-    const modal = document.getElementById('hangLatencyModal');
+    var modal = document.getElementById('hangLatencyModal');
     if (modal) modal.classList.remove('active');
     resetHangAll();
     speakVoice('已放弃本次悬挂记录');
@@ -363,23 +371,23 @@ window.cancelHangLatencyModal = function () {
 function settleFinalScore(score) {
     showResultModal(score, score >= hangState.countdownTarget);
     hangState.status = 'idle';
-    const actionBtn = document.getElementById('hangMainActionBtn');
-    if (actionBtn) actionBtn.textContent = '开始悬挂';
+    var actionBtn = document.getElementById('hangMainActionBtn');
+    if (actionBtn) actionBtn.textContent = '▶ 开始悬挂';
 }
 
-// 战报结算弹窗
-function showResultModal(scoreSec, isSuccess = true) {
-    const modal = document.getElementById('hangResultModal');
-    const scoreEl = document.getElementById('hangResultScore');
-    const rankEl = document.getElementById('hangResultRank');
-    const descEl = document.getElementById('hangResultDesc');
+function showResultModal(scoreSec, isSuccess) {
+    if (isSuccess === undefined) isSuccess = true;
+    var modal = document.getElementById('hangResultModal');
+    var scoreEl = document.getElementById('hangResultScore');
+    var rankEl = document.getElementById('hangResultRank');
+    var descEl = document.getElementById('hangResultDesc');
 
     if (!modal) return;
     modal.classList.add('active');
 
-    if (scoreEl) scoreEl.innerHTML = `${scoreSec}<span style="font-size: 1.6rem; color: #9aa0a6;">s</span>`;
+    if (scoreEl) scoreEl.innerHTML = scoreSec + '<span style="font-size: 1.6rem; color: #9aa0a6;">s</span>';
 
-    let rank = '抓握初成';
+    var rank = '抓握初成';
     if (scoreSec >= 60) rank = '天罡武圣 · 极意抓握';
     else if (scoreSec >= 45) rank = '金刚神魔 · 筋膜如铁';
     else if (scoreSec >= 30) rank = '钢铁抓握力 · 破境';
@@ -395,7 +403,6 @@ function showResultModal(scoreSec, isSuccess = true) {
     savePb(scoreSec);
 }
 
-// 拍击圆盘
 window.handleHangDialClick = function () {
     if (hangState.status === 'running') {
         triggerStopAndCalibration();
@@ -404,8 +411,8 @@ window.handleHangDialClick = function () {
 
 window.toggleHangStart = function () {
     getAudioCtx();
-    const actionBtn = document.getElementById('hangMainActionBtn');
-    const hintEl = document.getElementById('hangStatusHint');
+    var actionBtn = document.getElementById('hangMainActionBtn');
+    var hintEl = document.getElementById('hangStatusHint');
 
     if (hangState.status === 'idle') {
         hangState.status = 'prep';
@@ -413,7 +420,7 @@ window.toggleHangStart = function () {
         if (hintEl) hintEl.textContent = 'GET READY';
         if (actionBtn) actionBtn.textContent = '⏹ 结束悬挂';
 
-        speakVoice(`准备抓杠，${hangState.prepDuration}秒就位`);
+        speakVoice('准备抓杠，' + hangState.prepDuration + '秒就位');
         stopHangInterval();
         hangState.intervalId = setInterval(onHangTimerTick, 1000);
     } else {
@@ -427,10 +434,10 @@ window.resetHangAll = function () {
     hangState.elapsedSeconds = 0;
     hangState.timeRemaining = 0;
 
-    const actionBtn = document.getElementById('hangMainActionBtn');
-    const hintEl = document.getElementById('hangStatusHint');
-    const tapHint = document.getElementById('hangTapStopHint');
-    if (actionBtn) actionBtn.textContent = '开始悬挂';
+    var actionBtn = document.getElementById('hangMainActionBtn');
+    var hintEl = document.getElementById('hangStatusHint');
+    var tapHint = document.getElementById('hangTapStopHint');
+    if (actionBtn) actionBtn.textContent = '▶ 开始悬挂';
     if (hintEl) hintEl.textContent = 'READY';
     if (tapHint) tapHint.textContent = '拍击圆盘立即结算';
 
@@ -439,33 +446,33 @@ window.resetHangAll = function () {
 };
 
 window.closeHangResultModal = function (shouldSave) {
-    const modal = document.getElementById('hangResultModal');
+    var modal = document.getElementById('hangResultModal');
     if (modal) modal.classList.remove('active');
 
     if (shouldSave && window.data && data.logs) {
-        const scoreEl = document.getElementById('hangResultScore');
-        const scoreSec = parseInt(scoreEl?.textContent) || 30;
-        const duty = (typeof getDutyShiftInfo === 'function') ? getDutyShiftInfo() : { dutyDateStr: new Date().toISOString().slice(0, 10), shift: { name: '日常' } };
+        var scoreEl = document.getElementById('hangResultScore');
+        var scoreSec = parseInt(scoreEl ? scoreEl.textContent : 0) || 30;
+        var duty = (typeof getDutyShiftInfo === 'function') ? getDutyShiftInfo() : { dutyDateStr: new Date().toISOString().slice(0, 10), shift: { name: '日常' } };
 
         data.logs.push({
             id: 'l_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
             date: duty.dutyDateStr,
             type: '极限悬挂',
             sets: 1,
-            reps: `${scoreSec}s`,
+            reps: scoreSec + 's',
             total: scoreSec,
             isAerobic: false,
             isIsometric: true,
             heart: '未知',
             duration: Math.max(1, Math.round(scoreSec / 60)),
             rpe: 8,
-            dutyTag: `${duty.shift.name} (归属${duty.dutyDateStr.slice(5)})`,
+            dutyTag: duty.shift.name + ' (归属' + duty.dutyDateStr.slice(5) + ')',
             startTimeStamp: (typeof getFullTimestamp === 'function') ? getFullTimestamp() : new Date().toISOString(),
             endTimeStamp: (typeof getFullTimestamp === 'function') ? getFullTimestamp() : new Date().toISOString(),
             downSec: 0,
             upSec: 0,
             tutSeconds: scoreSec,
-            note: `极限悬挂做功(已通过10阶延时补偿核销)：净做功 ${scoreSec} 秒。`,
+            note: '极限悬挂做功(已通过10阶延时补偿核销)：净做功 ' + scoreSec + ' 秒。',
             createdAt: new Date().toISOString()
         });
 
@@ -479,7 +486,7 @@ window.closeHangResultModal = function (shouldSave) {
     resetHangAll();
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function () {
     loadPb();
     setRingProgress(0);
     window.switchHangVariant('hang');
