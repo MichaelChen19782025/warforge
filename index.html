@@ -54,12 +54,17 @@
                     <div id="actionQuickContainer"></div>
                 </div>
 
-                <!-- 2. 靠墙静蹲战位（全面支持徒手/单重/双物非对称负重） -->
+                <!-- 2. 靠墙静蹲战位（支持徒手/单重/双物非对称负重） -->
                 <div id="squat_deck" class="tab-content">
                     <div id="squatDeckContainer"></div>
                 </div>
+                
+                <!-- 3. 墙角扩胸（左右交替拉伸） -->
+                <div id="chest_deck" class="tab-content">
+                    <div id="chestDeckContainer"></div>
+                </div>
 
-                <!-- 3. 压腿舒筋战钟 -->
+                <!-- 4. 压腿舒筋战钟 -->
                 <div id="stretch_timer" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--purple-accent);">
                         <div class="card-header">
@@ -92,7 +97,7 @@
                     </div>
                 </div>
 
-                <!-- 4. 离心慢放战钟 -->
+                <!-- 5. 离心慢放战钟 -->
                 <div id="timer" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--green-accent);">
                         <div class="card-header">
@@ -178,7 +183,7 @@
                     </div>
                 </div>
 
-                <!-- 5. 引体全能舱 · 极限悬挂战钟 (默认静态悬挂 + 停表延时校准补偿) -->
+                <!-- 6. 引体全能舱 · 极限悬挂战钟 (默认静态悬挂 + 停表延时校准补偿) -->
                 <div id="hang_timer" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--cyan-accent);">
                         <div class="card-header">
@@ -252,7 +257,7 @@
                     </div>
                 </div>
 
-                <!-- 6. 即时出征台 -->
+                <!-- 7. 即时出征台 -->
                 <div id="workout_deck" class="tab-content">
                     <div class="duty-status-banner" id="dutyBanner">
                         <div style="flex:1; min-width:180px;">
@@ -315,7 +320,7 @@
                     </div>
                 </div>
 
-                <!-- 7. 气血中枢 -->
+                <!-- 8. 气血中枢 -->
                 <div id="dashboard" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--amber-accent);">
                         <div class="card-header">
@@ -353,7 +358,7 @@
                     </div>
                 </div>
 
-                <!-- 8. 淬体实录 -->
+                <!-- 9. 淬体实录 -->
                 <div id="log" class="tab-content">
                     <div class="cyber-card">
                         <div class="card-header">
@@ -364,7 +369,7 @@
                     </div>
                 </div>
 
-                <!-- 9. 易筋推演 -->
+                <!-- 10. 易筋推演 -->
                 <div id="analysis" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--cyan-accent);">
                         <div class="card-header"><span>⚡ 智能参谋推演指令生成器</span></div>
@@ -379,7 +384,7 @@
                     </div>
                 </div>
 
-                <!-- 10. 淬体随笔 -->
+                <!-- 11. 淬体随笔 -->
                 <div id="diary" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--amber-accent);">
                         <div class="card-header">
@@ -390,7 +395,7 @@
                     </div>
                 </div>
 
-                <!-- 11. 真武秘卷 -->
+                <!-- 12. 真武秘卷 -->
                 <div id="knowledge" class="tab-content">
                     <div class="cyber-card">
                         <div class="card-header"><span>📜 真武秘卷 · 运动控糖与眼底安全总纲</span></div>
@@ -398,7 +403,7 @@
                     </div>
                 </div>
 
-                <!-- 12. 灵枢配置 -->
+                <!-- 13. 灵枢配置 -->
                 <div id="settings" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--amber-accent);">
                         <div class="card-header"><span>🎯 天罡战令 · 全局宏观目标</span></div>
@@ -425,12 +430,12 @@
         </main>
     </div>
 
-    <!-- 弹窗 1：悬挂脱杠 3~4 秒操作延时校准弹层 (Bottom Sheet) -->
+    <!-- 弹窗 1：悬挂脱杠 10 阶延时校准弹层 (Bottom Sheet) -->
     <div class="modal-overlay" id="hangLatencyModal" onclick="cancelHangLatencyModal()">
         <div class="modal-card bottom-sheet-card" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <div>
-                    <h3 style="font-size:1.15rem; color:#fff;">⏳ 真实脱杠时长校准确认</h3>
+                    <h3 style="font-size:1.15rem; color:#fff;">⏳ 脱杠延时校准确认</h3>
                     <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">已自动扣减落地与点按手机的延时，请点击真实坚持时长：</div>
                 </div>
                 <button class="close-btn" onclick="cancelHangLatencyModal()">✕</button>
