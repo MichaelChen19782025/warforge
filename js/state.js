@@ -5,14 +5,16 @@
 const STORAGE_KEY = 'cyber_marshal_warforge_v9_ultimate';
 let currentFontSize = 15;
 
-// 动作法门武器库全面收录 (引体向上默认变式定为静态极限悬挂)
+// 动作法门武器库全面收录 (新增墙角扩胸)
 const DEFAULT_ARSENAL_TEMPLATE = [
     { id: 'act_jog_glyco', name: '慢跑', type: 'aerobic', defaultSets: 1, defaultReps: '25min', total: 25,
         downSec: 0, upSec: 0, icon: '🏃', tip: '餐后巡航消糖，清空肌糖原与肝糖原' },
     { id: 'act_squat_wall', name: '静蹲', type: 'isometric', defaultSets: 3, defaultReps: '60s',
-        total: 180, downSec: 0, upSec: 0, icon: '🧱', tip: '靠墙大腿水平90°，股四头肌等长收缩强力汲糖，支持单/双哑铃负重' },
+        total: 180, downSec: 0, upSec: 0, icon: '🧱', tip: '靠墙大腿水平90°，股四头肌强力汲糖，支持自重/单双负重' },
+    { id: 'act_chest_stretch', name: '墙角扩胸', type: 'isometric', defaultSets: 3, defaultReps: '30s', total: 180,
+        downSec: 0, upSec: 0, icon: '👐', tip: '左右交替扩胸拉伸，默认3组，每边30s，中间休15s，改善圆肩' },
     { id: 'act_hang', name: '极限悬挂', type: 'isometric', defaultSets: 1, defaultReps: '40s', total: 40,
-        downSec: 0, upSec: 0, icon: '🧗', tip: '单杠死磕，极限抗阻握力与肩袖微循环(默认延时校准补偿)' },
+        downSec: 0, upSec: 0, icon: '🧗', tip: '单杠死磕，极限抗阻握力与肩袖微循环(默认10阶延时校准补偿)' },
     { id: 'act_pushup_ecc', name: '离心俯卧', type: 'strength', defaultSets: 2, defaultReps: '10,10', total: 20,
         downSec: 4.0, upSec: 1.0, icon: '🔥', tip: '4s慢速离心下放/1s起，TUT破糖主力，默认10次/组' },
     { id: 'act_pullup', name: '标准引体', type: 'strength', defaultSets: 2, defaultReps: '8次', total: 16,
@@ -52,12 +54,16 @@ var data = {
         hangPrepDuration: 10,
         hangCountdownTarget: 30,
         // 靠墙静蹲专属负重配置
-        squatDefaultMode: 'bodyweight', // 'bodyweight' | 'single' | 'dual'
+        squatDefaultMode: 'bodyweight', 
         squatSingleWeight: 10.0,
         squatLeftWeight: 5.0,
         squatRightWeight: 5.0,
         squatItemDesc: '哑铃',
         squatLockSymmetric: true,
+        // 墙角扩胸配置
+        chestDefaultSets: 3,
+        chestDefaultSec: 30,
+        chestRestSec: 15,
         // 离心慢放配置
         eccentricDefaultSets: 2,
         eccentricDefaultReps: 10,
@@ -120,10 +126,11 @@ var data = {
         {
             id: 'plan_4',
             name: '🛡️ 第五方案 (筋膜养护与下肢微循环)',
-            desc: '压腿舒筋 + 靠墙静蹲',
+            desc: '压腿舒筋 + 靠墙静蹲 + 墙角扩胸',
             items: [
                 { actionId: 'act_pnf_stretch', name: '压腿', sets: 4, reps: '60s,60s,60s,60s', total: 240, downSec: 0, upSec: 0, heart: 90 },
-                { actionId: 'act_squat_wall', name: '靠墙静蹲', sets: 2, reps: '60s,60s', total: 120, downSec: 0, upSec: 0, heart: 110 }
+                { actionId: 'act_squat_wall', name: '靠墙静蹲', sets: 2, reps: '60s,60s', total: 120, downSec: 0, upSec: 0, heart: 110 },
+                { actionId: 'act_chest_stretch', name: '墙角扩胸', sets: 3, reps: '30s', total: 180, downSec: 0, upSec: 0, heart: 95 }
             ]
         }
     ],
@@ -149,6 +156,11 @@ function getArsenalList() {
             localAct.type = latestAct.type;
         }
     });
+    // 确保墙角扩胸被加入到老用户的库中
+    if (!data.arsenal.find(a => a.id === 'act_chest_stretch')) {
+        const chestAct = DEFAULT_ARSENAL_TEMPLATE.find(a => a.id === 'act_chest_stretch');
+        data.arsenal.push(JSON.parse(JSON.stringify(chestAct)));
+    }
     return data.arsenal;
 }
 
