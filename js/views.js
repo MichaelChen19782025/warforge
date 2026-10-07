@@ -1,5 +1,5 @@
 // ================================================================
-// views.js: 淬体实录、日记矩阵与灵枢配置（移动端防竖排挤压与负重明细渲染）
+// views.js: 实录矩阵、随笔阅读与大盘总参 (全面消除文字竖排挤压与负重明细渲染)
 // ================================================================
 function setSafeValue(id, val) {
 const el = document.getElementById(id);
@@ -91,7 +91,7 @@ return out;
 }
 function firstTextLine(s) {
 const t = String(s || '').split('\n').map(x => x.trim()).find(Boolean) || '';
-return t.length > 30 ? t.slice(0, 30) + '…' : t;
+return t.length > 26 ? t.slice(0, 26) + '…' : t;
 }
 function diarySortCompare(a, b) {
 const aDate = String(a.date || '');
@@ -103,7 +103,7 @@ return bDate.localeCompare(aDate);
 function diaryEntryCardHTML(d) {
 const cards = diaryCardEntries(d);
 const isAi = diaryIsAiSource(d);
-const tocLimit = 10;
+const tocLimit = 8;
 const toc = cards.length
 ? <div class="diary-toc">${cards.slice(0, tocLimit).map(c =>
 <button type="button" class="diary-toc-chip" onclick="openDiaryReader('${escAttr(d.id)}', `${c.idx}`)">
@@ -286,6 +286,71 @@ t
 l
 e
 "
+s
+t
+y
+l
+e
+=
+"
+w
+h
+i
+t
+e
+−
+s
+p
+a
+e
+:
+n
+o
+w
+r
+a
+p
+;
+o
+v
+e
+r
+f
+l
+o
+w
+:
+h
+i
+d
+d
+e
+n
+;
+t
+e
+x
+t
+−
+o
+v
+e
+r
+f
+l
+o
+w
+:
+e
+l
+l
+i
+p
+s
+i
+s
+;
+"
 >
 selectedDiaryIds.has(d.id)? 
 ′
@@ -293,9 +358,9 @@ selectedDiaryIds.has(d.id)?
 ′
  : 
 ′′
- onchange="diaryCheckToggle(this)"><divstyle="flex:1;min−width:0;"><divclass="diary−header"><divstyle="min−width:0;flex:1;"><divclass="diary−title">
+ onchange="diaryCheckToggle(this)"><divstyle="flex:1;min−width:0;"><divclass="diary−header"><divstyle="min−width:0;flex:1;"><divclass="diary−title"style="white−space:nowrap;overflow:hidden;text−overflow:ellipsis;">
 {escHtml(d.title || '无题随笔')}</div>
-<div class="diary-meta" style="margin-top:4px;">
+<div class="diary-meta" style="margin-top:2px; display:flex; gap:4px; flex-wrap:wrap;">
 <span class="badge ${isAi ? 'badge-cyan' : 'badge-green'}">${isAi ? '🧠 AI聊天' : '✍️ 手写'}</span>
 ${cards.length ? <span class="badge badge-amber">📇 ${cards.length}卡</span> : ''}
 <span>📅 
@@ -357,11 +422,52 @@ escHtml(d.date∣∣
 ′′
  )</span><spanclass="badgebadge−amber">
 {escHtml(d.mood || '平稳')}</span>
-{escHtml(d.tag)}</span>: ''} </div> </div> <div class="diary-actions" style="flex-shrink:0;"> <button class="btn btn-sm btn-cyan" onclick="openDiaryReader('${escAttr(d.id)}')">📖</button> <button class="btn btn-sm btn-outline" onclick="editDiaryEntry('${escAttr(d.id)}')">✏️</button> <button class="btn btn-sm btn-danger" onclick="deleteDiaryEntry('${escAttr(d.id)}')">🗑</button> </div> </div> ${toc} <div class="diary-content">${diaryBodyHTML(d)}</div> <div class="diary-footer"> <span class="diary-tag">🕒 ${d.createdAt ? new Date(d.createdAt).toLocaleString() : '未记时间'}</span> </div> </div> </div> </div>;
+</div>
+</div>
+<div class="diary-actions" style="flex-shrink:0;">
+<button class="btn btn-sm btn-cyan" onclick="openDiaryReader('${escAttr(d.id)}')">📖</button>
+<button class="btn btn-sm btn-outline" onclick="editDiaryEntry('${escAttr(d.id)}')">✏️</button>
+<button class="btn btn-sm btn-danger" onclick="deleteDiaryEntry('${escAttr(d.id)}')">🗑</button>
+</div>
+</div>
+t
+o
+<
+d
+i
+v
+l
+a
+s
+s
+=
+"
+d
+i
+a
+r
+y
+−
+o
+n
+t
+e
+n
+t
+"
+>
+toc<divclass="diary−content">
+{diaryBodyHTML(d)}</div>
+<div class="diary-footer">
+<span class="diary-tag">🕒 ${d.createdAt ? new Date(d.createdAt).toLocaleTimeString() : ''}</span>
+</div>
+</div>
+</div>
+</div>`;
 }
 function diaryCardIndexRowHTML(d, c) {
-const one = c.body.replace(/\s+/g, ' ').slice(0, 50);
-return <div class="diary-card-index-row" onclick="openDiaryReader('${escAttr(d.id)}', `${c.idx}`)"> <span class="dci-no">${c.idx >= 0 ? '#' + (c.idx + 1) : '单篇'}</span> <span class="dci-body" style="min-width:0;"> <span class="dci-title">${escHtml(c.title)}</span> <span class="dci-meta">📅 ${escHtml(d.date || '')} · ${escHtml(d.title || '随笔')}${one ? ' · ' + escHtml(one) : ''}</span> </span> <span class="dci-count">${c.body.length}字</span> </div>;
+const one = c.body.replace(/\s+/g, ' ').slice(0, 40);
+return <div class="diary-card-index-row" onclick="openDiaryReader('${escAttr(d.id)}', ${c.idx})"> <span class="dci-no">${c.idx >= 0 ? '#' + (c.idx + 1) : '单篇'}</span> <span class="dci-body" style="min-width:0;"> <span class="dci-title">${escHtml(c.title)}</span> <span class="dci-meta">📅 ${escHtml(d.date || '')} · ${escHtml(d.title || '随笔')}${one ? ' · ' + escHtml(one) : ''}</span> </span> <span class="dci-count">${c.body.length}字</span> </div>;
 }
 function diaryMonthKey(d) {
 return (d.date || '').slice(0, 7) || '未标注';
@@ -416,7 +522,7 @@ if (!data.diaries || !data.diaries.length) {
         <div class="diary-empty">
             <span>📖</span>
             尚未著录随笔<br>
-            <span style="font-size:11px; color:var(--text-dim);">点击「+ 撰写」或「🧠 AI聊天」记录心得</span>
+            <span style="font-size:11px; color:var(--text-dim);">点击「+ 撰写」记录心得</span>
         </div>
     `;
     if (countTextEl) countTextEl.textContent = '在册 0 篇';
@@ -432,7 +538,7 @@ const filtered = data.diaries
 const totalCards = filtered.reduce((n, d) => n + diaryCardEntries(d).length, 0);
 const totalChars = filtered.reduce((n, d) => n + diaryCharCount(d), 0);
 if (countTextEl) {
-    countTextEl.textContent = `在册 ${counts.all} 篇 · 当前 ${filtered.length} 篇 · 卡片 ${totalCards} 张 · 共 ${totalChars} 字`;
+    countTextEl.textContent = `在册 ${counts.all} 篇 · 当前 ${filtered.length} 篇 · 共 ${totalChars} 字`;
 }
 
 updateDiaryBatchUI();
@@ -476,7 +582,7 @@ return parts.join(' ').toLowerCase();
 }
 function diaryBodyHTML(d) {
 if (d.structured && typeof d.structured === 'object') return vaultHTML(d.structured);
-if (!d.content) return '<div class="diary-empty" style="padding:8px 0; text-align:left;">（无正文内容）</div>';
+if (!d.content) return '<div class="diary-empty" style="padding:6px 0; text-align:left;">（无内容）</div>';
 return mdLiteFlowing(d.content);
 }
 function vaultHTML(s) {
@@ -659,23 +765,26 @@ const recentEl = document.getElementById('recentLogs');
 if (recentEl) {
     recentEl.innerHTML = recent.length ? recent.map(l => `
         <div class="item-strip" style="border-left:3px solid var(--orange-primary);">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-weight:bold; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:70%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; min-width:0;">
+                <span style="font-weight:bold; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:70%;">
                     ${l.date.slice(5)} · ${l.type} <span style="color:var(--cyan-accent);">${l.total}</span>
                 </span>
                 <span class="badge badge-police" style="font-size:9.5px;">${l.dutyTag || '日常'}</span>
             </div>
         </div>
-    `).join('') : '<div style="color:var(--text-dim); padding:6px 0; font-size:12px;">今日尚未登记功课，警官请出征！</div>';
+    `).join('') : '<div style="color:var(--text-dim); padding:4px 0; font-size:11.5px;">今日尚未登记功课，警官请出征！</div>';
 }
 
 renderMasterPlanSettings();
 }
+// ----------------------------------------------------------------
+// ★ 淬体实录矩阵渲染（彻底杜绝文字竖排、清晰呈现负重细节）
+// ----------------------------------------------------------------
 function renderLogs() {
 const container = document.getElementById('logList');
 if (!container) return;
 if (!data.logs.length) {
-container.innerHTML = '<div style="color:var(--text-dim); padding:12px 0;">实录矩阵尚无数据。</div>';
+container.innerHTML = '<div style="color:var(--text-dim); padding:10px 0; font-size:12px;">实录矩阵尚无数据。</div>';
 return;
 }
 const sorted = [...data.logs].sort((a, b) => {
@@ -689,18 +798,18 @@ container.innerHTML = sorted.map(l => {
 
     return `
         <div class="item-strip">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-                <div style="min-width:0; flex:1;">
-                    <strong style="font-size:13px; color:#fff;">${l.date} · ${l.type}</strong>
-                    <span style="color:var(--orange-primary); font-family:var(--font-mono); font-weight:bold; margin-left:4px;">${l.total || 0}${unitSuffix}</span>
-                    <span class="badge badge-police" style="margin-left:4px;">${l.dutyTag || '勤务'}</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:nowrap; gap:4px; min-width:0;">
+                <div style="min-width:0; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    <strong style="font-size:12.5px; color:#fff;">${l.date} · ${l.type}</strong>
+                    <span style="color:var(--orange-primary); font-family:var(--font-mono); font-weight:bold; margin-left:3px;">${l.total || 0}${unitSuffix}</span>
+                    <span class="badge badge-police" style="margin-left:3px;">${l.dutyTag || '勤务'}</span>
                 </div>
-                <div style="flex-shrink:0;">
-                    <button class="btn btn-sm btn-outline" onclick="editLog('${l.id}')">✏️</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteLog('${l.id}')">🗑</button>
+                <div style="flex-shrink:0; display:flex; gap:3px;">
+                    <button class="btn btn-sm btn-outline" style="padding:2px 5px;" onclick="editLog('${l.id}')">✏️</button>
+                    <button class="btn btn-sm btn-danger" style="padding:2px 5px;" onclick="deleteLog('${l.id}')">🗑</button>
                 </div>
             </div>
-            ${l.note ? `<div style="font-size:11.5px; color:#cfc4b6; margin-top:3px; word-break:break-all;">${l.note}</div>` : ''}
+            ${l.note ? `<div style="font-size:11px; color:#cfc4b6; margin-top:3px; word-break:break-all; line-height:1.4;">${l.note}</div>` : ''}
         </div>
     `;
 }).join('');
@@ -754,7 +863,7 @@ const s = getSafeString('knowledgeSearch').toLowerCase();
 const list = data.knowledge.filter(k => (k.title + k.content + (k.category || '')).toLowerCase().includes(s));
 const kList = document.getElementById('knowledgeList');
 if (!kList) return;
-kList.innerHTML = list.map(k => <div class="item-strip"> <div style="display:flex; justify-content:space-between; align-items:center;"> <strong style="font-size:13px;">[${k.category || '通纲'}] ${k.title}</strong> </div> <div style="font-size:12px; color:#d2c6ba; margin-top:4px;">${mdLiteFlowing(k.content)}</div> </div>).join('') || '<div style="color:var(--text-dim); font-size:12px;">无匹配秘卷</div>';
+kList.innerHTML = list.map(k => <div class="item-strip"> <div style="display:flex; justify-content:space-between; align-items:center;"> <strong style="font-size:12.5px;">[${k.category || '通纲'}] ${k.title}</strong> </div> <div style="font-size:11.5px; color:#d2c6ba; margin-top:3px;">${mdLiteFlowing(k.content)}</div> </div>).join('') || '<div style="color:var(--text-dim); font-size:11px;">无匹配秘卷</div>';
 }
 function renderMasterPlanSettings() {
 const p = data.masterPlan;
