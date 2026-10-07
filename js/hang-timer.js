@@ -1,23 +1,24 @@
 /**
  * 天罡洗髓 · 引体全能舱 & 极限悬挂战钟 (PRO)
- * 具备：次数直录 / 极限界限秒表 / 目标倒计时
- * 优化特性：
- * 1. 参考《IRON GRIP》，秒表和倒计时全程“每一秒都语音报秒”，告别死寂；
- * 2. 拍击大圆盘立即停表结算与评级战报；
- * 3. 目标时长与就位准备时间调整后，自动记忆为下一次默认值。
+ * 具备特性：
+ * 1. 默认直接采用【极限悬挂】(静态单杠死磕)；
+ * 2. 【核心升级·脱杠延时校准补偿】：当点击结束正向读秒时，自动弹出包含 10 个时长的校准选择板，
+ *    以当前停表数先减去 4 秒为最高值，依次递减 10 个按钮，精准扣除脱杠放下手机并点击的时间！
+ * 3. 每一个秒表节点都由 Web Audio 与 TTS 语音清晰读秒，拒绝死寂。
  */
 
 (function () {
     const hangState = {
-        variant: 'standard', // 'standard' | 'wide' | 'hang'
-        mode: 'reps',        // 'reps' | 'stopwatch' | 'countdown'
+        variant: 'hang',     // 默认变式锁定为极限悬挂: 'hang' | 'standard' | 'wide'
+        mode: 'stopwatch',   // 'stopwatch' | 'countdown' | 'reps'
         status: 'idle',      // 'idle' | 'prep' | 'running'
         prepDuration: 10,
         countdownTarget: 30,
         elapsedSeconds: 0,
         timeRemaining: 0,
         intervalId: null,
-        repsCount: 8
+        repsCount: 8,
+        capturedRawSeconds: 0
     };
 
     let audioCtx = null;
@@ -55,12 +56,10 @@
             window.speechSynthesis.cancel();
             const utter = new SpeechSynthesisUtterance(text);
             utter.lang = 'zh-CN';
-            utter.rate = 1.3;
+            utter.rate = 1.35;
             utter.pitch = 1.05;
             window.speechSynthesis.speak(utter);
-        } catch (e) {
-            console.warn('TTS error:', e);
-        }
+        } catch (e) { }
     }
 
     function loadPb() {
@@ -135,7 +134,7 @@
         hangState.repsCount = parseInt(reps) || 8;
         const input = document.getElementById('hangRepsInput');
         if (input) input.value = hangState.repsCount;
-        [3, 5, 8, 10, 12, 15].forEach(r => {
+        [3, 5, 8, 10, 12].forEach(r => {
             const chip = document.getElementById(`chipRep${r}`);
             if (chip) chip.classList.toggle('active', r === hangState.repsCount);
         });
@@ -151,7 +150,7 @@
         const input = document.getElementById('hangRepsInput');
         const count = input ? (parseInt(input.value) || hangState.repsCount) : hangState.repsCount;
         playBeep(1200, 0.2);
-        speakVoice(`记录入册！做功 ${count} 次`);
+        speakVoice(`做功 ${count} 次`);
 
         if (window.data && data.logs) {
             const duty = (typeof getDutyShiftInfo === 'function') ? getDutyShiftInfo() : { dutyDateStr: new Date().toISOString().slice(0, 10), shift: { name: '日常' } };
@@ -175,7 +174,7 @@
                 downSec: 0,
                 upSec: 0,
                 tutSeconds: count * 3,
-                note: `${typeName}直录完成：有效做功 ${count} 次。`,
+                note: `${typeName}完成：有效做功 ${count} 次。`,
                 createdAt: new Date().toISOString()
             });
 
@@ -194,16 +193,13 @@
         if (typeof showToast === 'function') showToast('🗑️ 本次已放弃');
     };
 
-    // 倒计时预设选择并持久化
     window.setHangCountdownTime = function (sec) {
         const val = parseInt(sec) || 30;
         hangState.countdownTarget = val;
-
         if (window.data && data.settings) {
             data.settings.hangCountdownTarget = val;
             saveData();
         }
-
         const chips = document.querySelectorAll('#hangPresetContainer .preset-chip');
         chips.forEach(c => {
             c.classList.toggle('active', c.textContent.includes(`${val}秒`));
@@ -230,9 +226,7 @@
         circle.style.strokeDashoffset = offset;
     }
 
-    // 核心悬挂时钟Tick（每秒读秒，完全对齐 IRON GRIP）
     function onHangTimerTick() {
-        // 1. 就位准备
         if (hangState.status === 'prep') {
             hangState.timeRemaining--;
             updateDialValue(Math.max(0, hangState.timeRemaining), 'PREPARING');
@@ -249,20 +243,16 @@
             return;
         }
 
-        // 2. 秒表模式（极限界限）：每一秒都清晰读秒！
         if (hangState.status === 'running' && hangState.mode === 'stopwatch') {
             hangState.elapsedSeconds++;
             updateDialValue(hangState.elapsedSeconds, 'SECONDS');
             const ringTarget = Math.max(60, hangState.countdownTarget || 30);
             const pct = Math.min(100, (hangState.elapsedSeconds / ringTarget) * 100);
             setRingProgress(pct);
-
-            // 【核心修正】：每一秒都直接语音报当前秒数！
             speakVoice(String(hangState.elapsedSeconds));
             return;
         }
 
-        // 3. 倒计时模式：每一秒都倒数读秒！
         if (hangState.status === 'running' && hangState.mode === 'countdown') {
             hangState.timeRemaining--;
             updateDialValue(Math.max(0, hangState.timeRemaining), 'REMAINING');
@@ -270,7 +260,6 @@
             setRingProgress(pct);
 
             if (hangState.timeRemaining > 0) {
-                // 【核心修正】：每一秒逐秒读秒！
                 speakVoice(String(hangState.timeRemaining));
             } else {
                 onCountdownCompleted();
@@ -312,6 +301,73 @@
         }
     }
 
+    // ================================================================
+    // ★ 核心创新点：脱杠延时校准补偿机制 (Latency Compensation Picker)
+    // ================================================================
+    function triggerStopAndCalibration() {
+        stopHangInterval();
+        hangState.capturedRawSeconds = hangState.mode === 'stopwatch'
+            ? hangState.elapsedSeconds
+            : Math.max(0, hangState.countdownTarget - hangState.timeRemaining);
+
+        // 如果时长非常短(<5s)，无需弹窗，直接结算
+        if (hangState.capturedRawSeconds < 5) {
+            settleFinalScore(hangState.capturedRawSeconds);
+            return;
+        }
+
+        // 渲染 10 个时长校准按钮 (以 Raw - 4 秒为最高值，倒序排布 10 个)
+        // 例如 40 秒停表：展示 36, 35, 34, 33, 32, 31, 30, 29, 28, 27
+        const modal = document.getElementById('hangLatencyModal');
+        const rawEl = document.getElementById('hangLatencyRawScore');
+        const container = document.getElementById('hangLatencyButtonsContainer');
+        const origBtn = document.getElementById('hangLatencyOriginalBtn');
+
+        if (rawEl) rawEl.textContent = `${hangState.capturedRawSeconds}s`;
+        if (origBtn) origBtn.textContent = `⏱️ 按停表原时 (${hangState.capturedRawSeconds}s) 记录`;
+
+        const startCalib = Math.max(1, hangState.capturedRawSeconds - 4);
+        const buttons = [];
+        for (let i = 0; i < 10; i++) {
+            const sec = startCalib - i;
+            if (sec > 0) buttons.push(sec);
+        }
+
+        if (container) {
+            container.innerHTML = buttons.map(s => `
+                <button type="button" class="latency-chip-btn" onclick="confirmHangLatency(${s})">
+                    ${s}s
+                </button>
+            `).join('');
+        }
+
+        if (modal) modal.classList.add('active');
+        playBeep(900, 0.1);
+    }
+
+    window.confirmHangLatency = function (selectedSeconds) {
+        const modal = document.getElementById('hangLatencyModal');
+        if (modal) modal.classList.remove('active');
+
+        const finalScore = selectedSeconds > 0 ? selectedSeconds : hangState.capturedRawSeconds;
+        speakVoice(`校准完成，确认为 ${finalScore} 秒！`);
+        settleFinalScore(finalScore);
+    };
+
+    window.cancelHangLatencyModal = function () {
+        const modal = document.getElementById('hangLatencyModal');
+        if (modal) modal.classList.remove('active');
+        resetHangAll();
+        speakVoice('已放弃本次悬挂记录');
+    };
+
+    function settleFinalScore(score) {
+        showResultModal(score, score >= hangState.countdownTarget);
+        hangState.status = 'idle';
+        const actionBtn = document.getElementById('hangMainActionBtn');
+        if (actionBtn) actionBtn.textContent = '开始悬挂';
+    }
+
     // 结算弹窗
     function showResultModal(scoreSec, isSuccess = true) {
         const modal = document.getElementById('hangResultModal');
@@ -322,7 +378,7 @@
         if (!modal) return;
         modal.classList.add('active');
 
-        if (scoreEl) scoreEl.innerHTML = `${scoreSec}<span style="font-size: 2rem; color: #9aa0a6;">s</span>`;
+        if (scoreEl) scoreEl.innerHTML = `${scoreSec}<span style="font-size: 1.6rem; color: #9aa0a6;">s</span>`;
 
         let rank = '抓握初成';
         if (scoreSec >= 60) rank = '天罡武圣 · 极意抓握';
@@ -333,27 +389,17 @@
         if (rankEl) rankEl.textContent = rank;
         if (descEl) {
             descEl.textContent = isSuccess
-                ? '每一次做功都在重塑筋膜与小臂抓握力！'
-                : '虽未达标，但有效做功已刺激肌纤维！';
+                ? '脱杠延时已自动修正！每一次实修都在重塑筋膜与小臂抓握力！'
+                : '有效做功已深度刺激肌纤维，下次必破境！';
         }
 
         savePb(scoreSec);
     }
 
-    // 拍击圆盘结算
+    // 拍击圆盘
     window.handleHangDialClick = function () {
         if (hangState.status === 'running') {
-            stopHangInterval();
-            const score = hangState.mode === 'stopwatch'
-                ? hangState.elapsedSeconds
-                : Math.max(0, hangState.countdownTarget - hangState.timeRemaining);
-
-            playBeep(950, 0.15);
-            speakVoice(`悬挂结束，本次 ${score} 秒！干得漂亮！`);
-            showResultModal(score, score >= hangState.countdownTarget);
-            hangState.status = 'idle';
-            const actionBtn = document.getElementById('hangMainActionBtn');
-            if (actionBtn) actionBtn.textContent = '开始计时';
+            triggerStopAndCalibration();
         }
     };
 
@@ -366,13 +412,13 @@
             hangState.status = 'prep';
             hangState.timeRemaining = hangState.prepDuration;
             if (hintEl) hintEl.textContent = 'GET READY';
-            if (actionBtn) actionBtn.textContent = '⏹ 终止复位';
+            if (actionBtn) actionBtn.textContent = '⏹ 结束悬挂';
 
             speakVoice(`准备抓杠，${hangState.prepDuration}秒就位`);
             stopHangInterval();
             hangState.intervalId = setInterval(onHangTimerTick, 1000);
         } else {
-            resetHangAll();
+            triggerStopAndCalibration();
         }
     };
 
@@ -385,7 +431,7 @@
         const actionBtn = document.getElementById('hangMainActionBtn');
         const hintEl = document.getElementById('hangStatusHint');
         const tapHint = document.getElementById('hangTapStopHint');
-        if (actionBtn) actionBtn.textContent = '开始计时';
+        if (actionBtn) actionBtn.textContent = '开始悬挂';
         if (hintEl) hintEl.textContent = 'READY';
         if (tapHint) tapHint.textContent = '拍击圆盘立即结算';
 
@@ -420,7 +466,7 @@
                 downSec: 0,
                 upSec: 0,
                 tutSeconds: scoreSec,
-                note: `极限悬挂做功：完成 ${scoreSec} 秒。`,
+                note: `极限悬挂做功(已通过延时补偿核销)：净做功 ${scoreSec} 秒。`,
                 createdAt: new Date().toISOString()
             });
 
@@ -437,5 +483,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         loadPb();
         setRingProgress(0);
+        // 确保默认高亮静态极限悬挂
+        window.switchHangVariant('hang');
     });
 })();

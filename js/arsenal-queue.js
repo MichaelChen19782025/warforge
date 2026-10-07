@@ -1,5 +1,5 @@
 // ================================================================
-//  arsenal-queue.js: 动作装备库与出征队列（智能联动启动专有战钟与自动销项）
+//  arsenal-queue.js: 动作装备库与出征队列 (移动端空间极致压缩与负重静蹲联动)
 // ================================================================
 
 function renderArsenalPicker() {
@@ -10,9 +10,9 @@ function renderArsenalPicker() {
         const mem = data.customParamCache[act.id];
         const displayReps = mem?.reps || act.defaultReps;
         return `
-            <div class="arsenal-btn" onclick="addArsenalToQueue('${act.id}')" data-hud-tip="【${act.name}】：${act.tip}。点击立即加入出征台！">
+            <div class="arsenal-btn" onclick="addArsenalToQueue('${act.id}')">
                 <span>${act.icon} ${act.name}</span>
-                <span style="font-family:var(--font-mono); font-size:11px; color:var(--cyan-accent);">${displayReps}</span>
+                <span style="font-family:var(--font-mono); font-size:10px; color:var(--cyan-accent);">${displayReps}</span>
             </div>
         `;
     }).join('');
@@ -28,10 +28,9 @@ function renderPresetPlanBar() {
         const isActive = (data.activePlanIndex === idx);
         const isRec = (idx === recIndex);
         return `
-            <button class="plan-tab-btn ${isActive ? 'active' : ''}" onclick="applyPresetPlan(${idx})"
-                    data-hud-tip="【${plan.name}】：${plan.desc}。包含 ${plan.items.length} 个法门配置。">
+            <button class="plan-tab-btn ${isActive ? 'active' : ''}" onclick="applyPresetPlan(${idx})">
                 <span>${plan.name}</span>
-                ${isRec ? '<span style="color:var(--pink-accent); font-size:10px;">[推荐]</span>' : ''}
+                ${isRec ? '<span style="color:var(--pink-accent); font-size:9px;">[推荐]</span>' : ''}
             </button>
         `;
     }).join('');
@@ -76,7 +75,8 @@ function addArsenalToQueue(actionId) {
     const isAerobic = baseAct.type === 'aerobic';
     const isEccentric = (actionId === 'act_pushup_ecc');
     const isStretch = (actionId === 'act_pnf_stretch');
-    const defaultReps = isEccentric ? (data.settings?.eccentricDefaultReps || 10) : (isStretch ? '60s' : (baseAct.defaultReps || (isAerobic ? '25min' : '10')));
+    const isSquat = (actionId === 'act_squat_wall');
+    const defaultReps = isEccentric ? (data.settings?.eccentricDefaultReps || 10) : (isStretch ? '60s' : (isSquat ? '60s' : (baseAct.defaultReps || (isAerobic ? '25min' : '10'))));
 
     const newItem = {
         id: 'wq_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
@@ -86,7 +86,7 @@ function addArsenalToQueue(actionId) {
         type: baseAct.type || 'strength',
         sets: mem.sets !== undefined ? mem.sets : (isAerobic ? 1 : baseAct.defaultSets || 2),
         reps: mem.reps !== undefined ? mem.reps : defaultReps,
-        total: mem.total !== undefined ? mem.total : (isStretch ? 240 : (baseAct.total || 20)),
+        total: mem.total !== undefined ? mem.total : (isStretch ? 120 : (isSquat ? 180 : (baseAct.total || 20))),
         downSec: isAerobic ? 0 : (mem.downSec !== undefined ? mem.downSec : (baseAct.downSec || 0)),
         upSec: isAerobic ? 0 : (mem.upSec !== undefined ? mem.upSec : (baseAct.upSec || 0)),
         heart: mem.heart || '未知',
@@ -100,81 +100,60 @@ function addArsenalToQueue(actionId) {
     renderWorkoutQueue();
 }
 
-// 核心系统联动：出征台启动时自动联动调用专有倒计时与语音战钟！
 function startWorkoutItem(itemId) {
     const item = data.workoutQueue.find(x => x.id === itemId);
     if (!item) return;
 
-    // 1. 如果是离心慢放 -> 跳转到离心战钟并同步参数启动
+    // 1. 离心慢放
     if (item.actionId === 'act_pushup_ecc' || item.name.includes('离心')) {
         switchTab('timer');
         const defaultReps = parseInt(item.reps) || data.settings?.eccentricDefaultReps || 10;
-        if (typeof setEccentricQuickSets === 'function') {
-            setEccentricQuickSets(item.sets || data.settings?.eccentricDefaultSets || 2);
-        }
-        if (typeof setEccentricQuickReps === 'function') {
-            setEccentricQuickReps(defaultReps);
-        }
-        if (typeof startEccentricTimer === 'function') {
-            startEccentricTimer();
-        }
+        if (typeof setEccentricQuickSets === 'function') setEccentricQuickSets(item.sets || 2);
+        if (typeof setEccentricQuickReps === 'function') setEccentricQuickReps(defaultReps);
+        if (typeof startEccentricTimer === 'function') startEccentricTimer();
         return;
     }
 
-    // 2. 如果是慢跑 -> 跳转到慢跑巡航面板
+    // 2. 慢跑
     if (item.actionId === 'act_jog_glyco' || item.name.includes('跑')) {
         switchTab('action_quick');
-        if (typeof setQuickJogMinutes === 'function') {
-            setQuickJogMinutes(parseInt(item.total) || 25);
-        }
-        if (typeof startQuickJog === 'function') {
-            startQuickJog();
-        }
+        if (typeof setQuickJogMinutes === 'function') setQuickJogMinutes(parseInt(item.total) || 25);
+        if (typeof startQuickJog === 'function') startQuickJog();
         return;
     }
 
-    // 3. 如果是压腿 -> 跳转到压腿舒筋战钟
-    if (item.actionId === 'act_pnf_stretch' || item.name.includes('压腿') || item.name.includes('拉伸')) {
-        switchTab('stretch_timer');
-        if (typeof switchStretchMode === 'function') {
-            switchStretchMode('countdown');
-        }
-        if (typeof setStretchSets === 'function') {
-            setStretchSets(item.sets || data.settings?.stretchDefaultSets || 2);
-        }
-        if (typeof setStretchLegDuration === 'function') {
-            const singleDuration = parseInt(item.reps) || data.settings?.stretchDefaultDuration || 60;
-            setStretchLegDuration(singleDuration);
-        }
+    // 3. 靠墙静蹲 -> 切换到静蹲专属工作台
+    if (item.actionId === 'act_squat_wall' || item.name.includes('静蹲')) {
+        switchTab('squat_deck');
+        if (typeof renderSquatDeckPanel === 'function') renderSquatDeckPanel();
         return;
     }
 
-    // 4. 如果是引体向上 / 阔引体 / 悬挂 -> 跳转到引体全能战钟
-    if (item.actionId === 'act_pullup' || item.actionId === 'act_pullup_wide' || item.actionId === 'act_hang' || item.name.includes('引体') || item.name.includes('悬挂')) {
+    // 4. 引体向上 / 极限悬挂 -> 切换到引体战阙 (默认极限悬挂)
+    if (item.actionId === 'act_hang' || item.actionId === 'act_pullup' || item.actionId === 'act_pullup_wide' || item.name.includes('悬挂') || item.name.includes('引体')) {
         switchTab('hang_timer');
         if (typeof switchHangVariant === 'function') {
-            if (item.name.includes('阔')) {
-                switchHangVariant('wide');
-            } else if (item.name.includes('悬挂')) {
-                switchHangVariant('hang');
-            } else {
-                switchHangVariant('standard');
-            }
+            if (item.name.includes('阔')) switchHangVariant('wide');
+            else if (item.name.includes('标准') || item.name.includes('引体')) switchHangVariant('standard');
+            else switchHangVariant('hang');
         }
         return;
     }
 
-    // 5. 其余常规通用动作，原地打卡
+    // 5. 压腿
+    if (item.actionId === 'act_pnf_stretch' || item.name.includes('压腿') || item.name.includes('拉伸')) {
+        switchTab('stretch_timer');
+        return;
+    }
+
+    // 通用打卡
     item.status = 'running';
     item.startTime = (typeof getFullTimestamp === 'function') ? getFullTimestamp() : new Date().toISOString();
     item.endTime = '';
     item.durationMin = 0;
-
     saveData();
     renderWorkoutQueue();
-    if (typeof showToast === 'function') {
-        showToast(`🚀 开始【${item.name}】！`);
-    }
+    if (typeof showToast === 'function') showToast(`🚀 开始【${item.name}】！`);
 }
 
 function endWorkoutItem(itemId) {
@@ -196,9 +175,7 @@ function endWorkoutItem(itemId) {
         saveData();
         renderWorkoutQueue();
         if (typeof renderAll === 'function') renderAll();
-        if (typeof showToast === 'function') {
-            showToast(`✅ 【${item.name}】已成功入册！`);
-        }
+        if (typeof showToast === 'function') showToast(`✅ 【${item.name}】已成功入册！`);
     }
 }
 
@@ -248,7 +225,7 @@ function autoCommitLogEntry(item) {
             downSec: isAerobic ? 0 : (item.downSec || 0),
             upSec: isAerobic ? 0 : (item.upSec || 0),
             tutSeconds: finalTut,
-            note: `${item.name}实修入册。做功量: ${finalTotal}`,
+            note: item.note || `${item.name}实修入册。做功量: ${finalTotal}`,
             createdAt: new Date().toISOString()
         };
 
@@ -332,8 +309,8 @@ function renderWorkoutQueue() {
 
     if (!data.workoutQueue.length) {
         container.innerHTML = `
-            <div style="text-align:center; padding:25px 0; color:var(--text-dim); font-size:13px;">
-                出征台暂无项目。点击上方【动作法门装备库】添加，或直接切换方案！
+            <div style="text-align:center; padding:18px 0; color:var(--text-dim); font-size:12.5px;">
+                出征台暂无项目。点击上方【动作法门装备库】添加！
             </div>
         `;
         renderWorkoutQueueStats();
@@ -348,12 +325,11 @@ function renderWorkoutQueue() {
 
         let badgeTitle = '';
         if (isAerobic) {
-            badgeTitle = `<span style="font-family:var(--font-mono); font-size:13px; color:var(--cyan-accent); font-weight:bold;">${item.total || 25} 分钟</span>`;
+            badgeTitle = `<span style="font-family:var(--font-mono); font-size:11.5px; color:var(--cyan-accent); font-weight:bold;">${item.total || 25}分</span>`;
         } else if (isIsometric) {
-            badgeTitle = `<span style="font-family:var(--font-mono); font-size:13px; color:var(--green-accent); font-weight:bold;">${item.sets}组 · ${item.reps || item.total + 's'}</span>`;
+            badgeTitle = `<span style="font-family:var(--font-mono); font-size:11.5px; color:var(--green-accent); font-weight:bold;">${item.sets}组·${item.reps || item.total + 's'}</span>`;
         } else {
-            const downUpBadge = item.downSec > 0 ? `<span class="badge badge-cyan">${item.downSec}s下/${item.upSec}s起</span>` : '';
-            badgeTitle = `<span style="font-family:var(--font-mono); font-size:13px; color:var(--orange-primary); font-weight:bold;">${item.total} 次</span> ${downUpBadge}`;
+            badgeTitle = `<span style="font-family:var(--font-mono); font-size:11.5px; color:var(--orange-primary); font-weight:bold;">${item.total}次</span>`;
         }
 
         const ctrlBtn = isRunning
@@ -364,7 +340,7 @@ function renderWorkoutQueue() {
         if (isAerobic) {
             editInputsRow = `
                 <div class="slot-input-group" style="grid-column: span 2;">
-                    <label>持续时长 (分钟 / MIN)</label>
+                    <label>持续时长 (分钟)</label>
                     <input type="number" value="${item.total || 25}" min="1" step="5"
                            onchange="updateQueueItemParam('${item.id}', 'total', this.value); updateQueueItemParam('${item.id}', 'durationMin', this.value);">
                 </div>
@@ -372,54 +348,48 @@ function renderWorkoutQueue() {
         } else {
             editInputsRow = `
                 <div class="slot-input-group">
-                    <label>组数 (SETS)</label>
+                    <label>组数</label>
                     <input type="number" value="${item.sets}" min="1"
                            onchange="updateQueueItemParam('${item.id}', 'sets', this.value)">
                 </div>
                 <div class="slot-input-group">
-                    <label>点数/时长矩阵</label>
+                    <label>点数/时长</label>
                     <input type="text" value="${item.reps || ''}"
                            oninput="updateQueueItemParam('${item.id}', 'reps', this.value)">
                 </div>
                 <div class="slot-input-group">
-                    <label>总数/总秒</label>
+                    <label>总量</label>
                     <input type="number" id="q_tot_${item.id}" value="${item.total}"
                            onchange="updateQueueItemParam('${item.id}', 'total', this.value)">
                 </div>
             `;
         }
 
-        const heartColor = (heartDisplay === '未知') ? 'var(--amber-accent)' : '#fff';
-        const runningStyle = isRunning ? 'border-left-color: var(--green-accent); box-shadow: 0 0 12px rgba(5,255,161,0.25);' : '';
-        const timeInfo = item.startTime ? `开始: ${item.startTime}` : '尚未启动';
-        const endTimeInfo = item.endTime ? ` ➔ 结束: ${item.endTime}` : '';
-        const durationInfo = item.durationMin > 0 ? `<span style="color:var(--green-accent); font-weight:bold;">⏱️ 用时: ${item.durationMin} 分钟</span>` : '';
+        const timeInfo = item.startTime ? `始: ${item.startTime.slice(11)}` : '未启动';
+        const endTimeInfo = item.endTime ? ` 止: ${item.endTime.slice(11)}` : '';
+        const durationInfo = item.durationMin > 0 ? `<span style="color:var(--green-accent);">⏱️ ${item.durationMin}分</span>` : '';
 
         return `
-            <div class="routine-slot-item" id="slot_${item.id}" style="${runningStyle}">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div class="routine-slot-item" id="slot_${item.id}" style="${isRunning ? 'border-left-color: var(--green-accent); box-shadow: 0 0 10px rgba(5,255,161,0.2);' : ''}">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                     <div>
-                        <span style="font-weight:bold; color:#fff; font-size:16px;">${item.icon} ${item.name}</span>
+                        <span style="font-weight:bold; color:#fff; font-size:14px;">${item.icon} ${item.name}</span>
                         ${badgeTitle}
                     </div>
-                    <div style="display:flex; gap:6px;">
+                    <div style="display:flex; gap:4px;">
                         ${ctrlBtn}
-                        <button class="btn btn-sm btn-outline" onclick="removeQueueItem('${item.id}')" title="移除此项">✕</button>
+                        <button class="btn btn-sm btn-outline" onclick="removeQueueItem('${item.id}')">✕</button>
                     </div>
                 </div>
-                <div class="slot-inputs-row" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(90px, 1fr)); gap:8px;">
+                <div class="slot-inputs-row">
                     ${editInputsRow}
                     <div class="slot-input-group">
                         <label>心脉 (BPM)</label>
-                        <div style="display:flex; gap:4px;">
-                            <input type="text" id="q_heart_${item.id}" value="${heartDisplay}" style="font-size:12px; text-align:center; color:${heartColor};"
-                                   onchange="updateQueueItemParam('${item.id}', 'heart', this.value)">
-                            <button type="button" class="btn btn-sm btn-outline" style="padding:2px 6px; font-size:10px;"
-                                    onclick="updateQueueItemParam('${item.id}', 'heart', '未知'); document.getElementById('q_heart_${item.id}').value='未知';">未知</button>
-                        </div>
+                        <input type="text" id="q_heart_${item.id}" value="${heartDisplay}" style="font-size:11px; text-align:center;"
+                               onchange="updateQueueItemParam('${item.id}', 'heart', this.value)">
                     </div>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:11.5px; color:var(--text-muted);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:11px; color:var(--text-muted);">
                     <span style="font-family:var(--font-mono);">${timeInfo}${endTimeInfo}</span>
                     ${durationInfo}
                 </div>
@@ -501,7 +471,7 @@ function renderArsenalManageList() {
     const container = document.getElementById('arsenalManageList');
     if (!container) return;
     container.innerHTML = list.map(act => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:12.5px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:12px;">
             <span>${act.icon} <strong>${act.name}</strong> (${act.defaultReps})</span>
             <div>
                 <button class="btn btn-sm btn-danger" onclick="deleteArsenalItem('${act.id}')">🗑</button>
