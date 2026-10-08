@@ -15,7 +15,7 @@
 <body>
 
     <div class="viewport-container" id="appViewport">
-        <!-- 顶栏指挥台（移动端超紧凑防挤压） -->
+        <!-- 顶栏指挥台 -->
         <header>
             <div class="header-left">
                 <div class="brand-logo-main" onclick="switchTab('workout_deck')"
@@ -49,141 +49,22 @@
         <main>
             <div class="left-deck" id="leftDeckPane">
 
-                <!-- 1. 慢跑巡航面板 -->
-                <div id="action_quick" class="tab-content">
-                    <div id="actionQuickContainer"></div>
-                </div>
-
-                <!-- 2. 靠墙静蹲战位（支持徒手/单重/双物非对称负重） -->
+                <!-- 1. 靠墙静蹲战位（10s提前量 + 每秒读秒 + 徒手/单重/双重） -->
                 <div id="squat_deck" class="tab-content">
                     <div id="squatDeckContainer"></div>
                 </div>
-                
-                <!-- 3. 墙角扩胸（左右交替拉伸） -->
+
+                <!-- 2. 墙角扩胸（10s提前量 + 做功换边全程每秒读秒） -->
                 <div id="chest_deck" class="tab-content">
                     <div id="chestDeckContainer"></div>
                 </div>
 
-                <!-- 4. 压腿舒筋战钟 -->
-                <div id="stretch_timer" class="tab-content">
-                    <div class="cyber-card" style="--card-accent: var(--purple-accent);">
-                        <div class="card-header">
-                            <span>🧘 压腿舒筋·全程读秒战钟</span>
-                            <div class="header-btn-group">
-                                <button class="btn btn-sm btn-outline active" id="btnStretchModeCountdown" onclick="switchStretchMode('countdown')">倒计时</button>
-                                <button class="btn btn-sm btn-outline" id="btnStretchModeStopwatch" onclick="switchStretchMode('stopwatch')">秒表</button>
-                                <button class="btn btn-sm btn-outline" id="btnStretchModePnf" onclick="switchStretchMode('pnf')">PNF周天</button>
-                            </div>
-                        </div>
-
-                        <div class="timer-display" style="border-color: rgba(181, 95, 230, 0.4);">
-                            <div class="timer-set-counter" id="stretchCycleCounter" style="color:var(--purple-accent);">单侧目标压腿</div>
-                            <div class="timer-phase" id="stretchPhaseDisplay" style="color:var(--purple-accent);">深度拉伸 (60s)</div>
-                            <div class="timer-clock" id="stretchTimerClock" style="text-shadow: 0 0 25px rgba(181, 95, 230, 0.5);">01:00</div>
-                            <div class="timer-progress">
-                                <div class="timer-progress-fill" id="stretchProgressFill" style="background:linear-gradient(90deg, var(--purple-accent), var(--cyan-accent));"></div>
-                            </div>
-                        </div>
-
-                        <div class="ctrl-btn-row">
-                            <button class="btn btn-primary btn-action-main" id="stretchStartBtn" onclick="toggleStretchTimer()" style="background:var(--purple-accent);">
-                                ▶ 开始压腿
-                            </button>
-                            <button class="btn btn-outline" id="stretchPauseBtn" onclick="toggleStretchTimer()" disabled>⏸ 暂停</button>
-                            <button class="btn btn-danger" onclick="stopStretchTimer(false)">⏹ 提前收功</button>
-                        </div>
-
-                        <div id="stretchSettingsArea"></div>
-                    </div>
+                <!-- 3. 慢跑巡航面板（10s提前量） -->
+                <div id="action_quick" class="tab-content">
+                    <div id="actionQuickContainer"></div>
                 </div>
 
-                <!-- 5. 离心慢放战钟 -->
-                <div id="timer" class="tab-content">
-                    <div class="cyber-card" style="--card-accent: var(--green-accent);">
-                        <div class="card-header">
-                            <span>⏱️ 离心慢放·破糖战钟 (盲听报号)</span>
-                            <span class="badge badge-green" id="timerStatus">就绪</span>
-                        </div>
-
-                        <div class="timer-display">
-                            <div class="timer-set-counter" id="timerSetCounter">第 0 / 2 组 (每组 10 次)</div>
-                            <div class="timer-phase" id="phaseDisplay">战法就绪</div>
-                            <div class="timer-clock" id="timerClock">00:00</div>
-                            <div class="timer-progress"><div class="timer-progress-fill" id="timerProgressFill"></div></div>
-                        </div>
-
-                        <!-- 设定组数与次数（自适应紧凑流） -->
-                        <div class="mobile-param-box">
-                            <div class="param-row">
-                                <span class="param-label">设定组数:</span>
-                                <div class="param-chips">
-                                    <button type="button" class="preset-chip active" id="chipSet2" onclick="setEccentricQuickSets(2)">2组</button>
-                                    <button type="button" class="preset-chip" id="chipSet3" onclick="setEccentricQuickSets(3)">3组</button>
-                                    <button type="button" class="preset-chip" id="chipSet4" onclick="setEccentricQuickSets(4)">4组</button>
-                                    <button type="button" class="preset-chip" id="chipSet5" onclick="setEccentricQuickSets(5)">5组</button>
-                                </div>
-                                <div class="stepper-mini">
-                                    <button class="btn btn-sm btn-outline" onclick="stepEccentricSets(-1)">-</button>
-                                    <span id="eccSetsDisplay" class="stepper-num" style="color:var(--orange-primary);">2</span>
-                                    <button class="btn btn-sm btn-outline" onclick="stepEccentricSets(1)">+</button>
-                                </div>
-                            </div>
-
-                            <div class="param-row">
-                                <span class="param-label" style="color:var(--cyan-accent);">每组次数:</span>
-                                <div class="param-chips">
-                                    <button type="button" class="preset-chip" id="chipEccRep6" onclick="setEccentricQuickReps(6)">6次</button>
-                                    <button type="button" class="preset-chip" id="chipEccRep8" onclick="setEccentricQuickReps(8)">8次</button>
-                                    <button type="button" class="preset-chip active" id="chipEccRep10" onclick="setEccentricQuickReps(10)">10次</button>
-                                    <button type="button" class="preset-chip" id="chipEccRep12" onclick="setEccentricQuickReps(12)">12次</button>
-                                    <button type="button" class="preset-chip" id="chipEccRep15" onclick="setEccentricQuickReps(15)">15次</button>
-                                </div>
-                                <div class="stepper-mini">
-                                    <button class="btn btn-sm btn-outline" onclick="stepEccentricReps(-1)">-</button>
-                                    <span id="eccRepsDisplay" class="stepper-num" style="color:var(--cyan-accent);">10</span>
-                                    <button class="btn btn-sm btn-outline" onclick="stepEccentricReps(1)">+</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="ctrl-btn-row">
-                            <button class="btn btn-success btn-action-main" id="timerStartBtn" onclick="startEccentricTimer()">
-                                ▶ 开始运转 (留10s准备)
-                            </button>
-                            <button class="btn btn-outline" id="timerPauseBtn" onclick="pauseEccentricTimer()" disabled>⏸ 暂停</button>
-                            <button class="btn btn-outline hidden" id="timerSkipRestBtn" onclick="skipTimerRest()" style="border-color:var(--cyan-accent); color:var(--cyan-accent);">⏭ 跳过休息</button>
-                            <button class="btn btn-danger" onclick="stopEccentricTimer()">⏹ 复位</button>
-                        </div>
-
-                        <div class="row mobile-grid-inputs">
-                            <div class="flex-1">
-                                <label>盲听语音报号</label>
-                                <select id="voiceEnabled">
-                                    <option value="true">开启 (提前250ms)</option>
-                                    <option value="false">静音运转</option>
-                                </select>
-                            </div>
-                            <div class="flex-1">
-                                <label>单次慢降(秒)</label>
-                                <input type="number" id="timerDownInput" value="4.0" step="0.5" min="1" onchange="syncTimerInputs()">
-                            </div>
-                            <div class="flex-1">
-                                <label>撑起爆发(秒)</label>
-                                <input type="number" id="timerUpInput" value="1.0" step="0.5" min="0.5" onchange="syncTimerInputs()">
-                            </div>
-                            <div class="flex-1">
-                                <label>单组次数</label>
-                                <input type="number" id="timerRepsInput" value="10" min="1" onchange="setEccentricQuickReps(this.value)">
-                            </div>
-                            <div class="flex-1">
-                                <label>循环组数</label>
-                                <input type="number" id="timerSetsInput" value="2" min="1" onchange="setEccentricQuickSets(this.value)">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 6. 引体全能舱 · 极限悬挂战钟 (默认静态悬挂 + 停表延时校准补偿) -->
+                <!-- 4. 极限悬挂战钟（10s提前量 + 每秒读秒 + 10阶延时校准补偿） -->
                 <div id="hang_timer" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--cyan-accent);">
                         <div class="card-header">
@@ -191,7 +72,6 @@
                             <span class="badge badge-cyan" id="hangPbDisplay">🏆 PB: 0s</span>
                         </div>
 
-                        <!-- 变式与模式选择 (响应式防挤压) -->
                         <div class="hang-mode-bar">
                             <div class="param-chips">
                                 <button class="preset-chip active" id="chipVarHang" onclick="switchHangVariant('hang')">极限悬挂</button>
@@ -205,7 +85,7 @@
                             </div>
                         </div>
 
-                        <!-- 次数直录视窗 (引体拉力用) -->
+                        <!-- 次数直录视窗 -->
                         <div id="hangRepsContainer" class="hidden" style="text-align:center; padding:12px 0;">
                             <label style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">本次有效完成次数：</label>
                             <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:12px;">
@@ -250,10 +130,128 @@
                             </div>
 
                             <div class="ctrl-btn-row">
-                                <button class="btn btn-primary btn-action-main" id="hangMainActionBtn" onclick="toggleHangStart()">开始悬挂</button>
+                                <button class="btn btn-primary btn-action-main" id="hangMainActionBtn" onclick="toggleHangStart()">开始悬挂 (留10s准备)</button>
                                 <button class="btn btn-outline" onclick="resetHangAll()">重置</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 5. 离心慢放战钟（10s提前量 + 提前250ms盲听报号） -->
+                <div id="timer" class="tab-content">
+                    <div class="cyber-card" style="--card-accent: var(--green-accent);">
+                        <div class="card-header">
+                            <span>⏱️ 离心慢放·破糖战钟 (盲听报号)</span>
+                            <span class="badge badge-green" id="timerStatus">就绪</span>
+                        </div>
+
+                        <div class="timer-display">
+                            <div class="timer-set-counter" id="timerSetCounter">第 0 / 2 组 (每组 10 次)</div>
+                            <div class="timer-phase" id="phaseDisplay">战法就绪</div>
+                            <div class="timer-clock" id="timerClock">00:00</div>
+                            <div class="timer-progress"><div class="timer-progress-fill" id="timerProgressFill"></div></div>
+                        </div>
+
+                        <div class="mobile-param-box">
+                            <div class="param-row">
+                                <span class="param-label">设定组数:</span>
+                                <div class="param-chips">
+                                    <button type="button" class="preset-chip active" id="chipSet2" onclick="setEccentricQuickSets(2)">2组</button>
+                                    <button type="button" class="preset-chip" id="chipSet3" onclick="setEccentricQuickSets(3)">3组</button>
+                                    <button type="button" class="preset-chip" id="chipSet4" onclick="setEccentricQuickSets(4)">4组</button>
+                                    <button type="button" class="preset-chip" id="chipSet5" onclick="setEccentricQuickSets(5)">5组</button>
+                                </div>
+                                <div class="stepper-mini">
+                                    <button class="btn btn-sm btn-outline" onclick="stepEccentricSets(-1)">-</button>
+                                    <span id="eccSetsDisplay" class="stepper-num" style="color:var(--orange-primary);">2</span>
+                                    <button class="btn btn-sm btn-outline" onclick="stepEccentricSets(1)">+</button>
+                                </div>
+                            </div>
+
+                            <div class="param-row">
+                                <span class="param-label" style="color:var(--cyan-accent);">每组次数:</span>
+                                <div class="param-chips">
+                                    <button type="button" class="preset-chip" id="chipEccRep6" onclick="setEccentricQuickReps(6)">6次</button>
+                                    <button type="button" class="preset-chip" id="chipEccRep8" onclick="setEccentricQuickReps(8)">8次</button>
+                                    <button type="button" class="preset-chip active" id="chipEccRep10" onclick="setEccentricQuickReps(10)">10次</button>
+                                    <button type="button" class="preset-chip" id="chipEccRep12" onclick="setEccentricQuickReps(12)">12次</button>
+                                    <button type="button" class="preset-chip" id="chipEccRep15" onclick="setEccentricQuickReps(15)">15次</button>
+                                </div>
+                                <div class="stepper-mini">
+                                    <button class="btn btn-sm btn-outline" onclick="stepEccentricReps(-1)">-</button>
+                                    <span id="eccRepsDisplay" class="stepper-num" style="color:var(--cyan-accent);">10</span>
+                                    <button class="btn btn-sm btn-outline" onclick="stepEccentricReps(1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ctrl-btn-row">
+                            <button class="btn btn-success btn-action-main" id="timerStartBtn" onclick="startEccentricTimer()">
+                                ▶ 开始运转 (留10s就位准备)
+                            </button>
+                            <button class="btn btn-outline" id="timerPauseBtn" onclick="pauseEccentricTimer()" disabled>⏸ 暂停</button>
+                            <button class="btn btn-outline hidden" id="timerSkipRestBtn" onclick="skipTimerRest()" style="border-color:var(--cyan-accent); color:var(--cyan-accent);">⏭ 跳过休息</button>
+                            <button class="btn btn-danger" onclick="stopEccentricTimer()">⏹ 复位</button>
+                        </div>
+
+                        <div class="row mobile-grid-inputs">
+                            <div class="flex-1">
+                                <label>盲听语音报号</label>
+                                <select id="voiceEnabled">
+                                    <option value="true">开启 (提前250ms)</option>
+                                    <option value="false">静音运转</option>
+                                </select>
+                            </div>
+                            <div class="flex-1">
+                                <label>单次慢降(秒)</label>
+                                <input type="number" id="timerDownInput" value="4.0" step="0.5" min="1" onchange="syncTimerInputs()">
+                            </div>
+                            <div class="flex-1">
+                                <label>撑起爆发(秒)</label>
+                                <input type="number" id="timerUpInput" value="1.0" step="0.5" min="0.5" onchange="syncTimerInputs()">
+                            </div>
+                            <div class="flex-1">
+                                <label>单组次数</label>
+                                <input type="number" id="timerRepsInput" value="10" min="1" onchange="setEccentricQuickReps(this.value)">
+                            </div>
+                            <div class="flex-1">
+                                <label>循环组数</label>
+                                <input type="number" id="timerSetsInput" value="2" min="1" onchange="setEccentricQuickSets(this.value)">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. 压腿舒筋战钟（10s提前量 + 做功换边全周期每秒读秒） -->
+                <div id="stretch_timer" class="tab-content">
+                    <div class="cyber-card" style="--card-accent: var(--purple-accent);">
+                        <div class="card-header">
+                            <span>🧘 压腿舒筋·全程读秒战钟</span>
+                            <div class="header-btn-group">
+                                <button class="btn btn-sm btn-outline active" id="btnStretchModeCountdown" onclick="switchStretchMode('countdown')">倒计时</button>
+                                <button class="btn btn-sm btn-outline" id="btnStretchModeStopwatch" onclick="switchStretchMode('stopwatch')">秒表</button>
+                                <button class="btn btn-sm btn-outline" id="btnStretchModePnf" onclick="switchStretchMode('pnf')">PNF周天</button>
+                            </div>
+                        </div>
+
+                        <div class="timer-display" style="border-color: rgba(181, 95, 230, 0.4);">
+                            <div class="timer-set-counter" id="stretchCycleCounter" style="color:var(--purple-accent);">单侧目标压腿 (留10s准备)</div>
+                            <div class="timer-phase" id="stretchPhaseDisplay" style="color:var(--purple-accent);">深度拉伸 (60s)</div>
+                            <div class="timer-clock" id="stretchTimerClock" style="text-shadow: 0 0 25px rgba(181, 95, 230, 0.5);">01:00</div>
+                            <div class="timer-progress">
+                                <div class="timer-progress-fill" id="stretchProgressFill" style="background:linear-gradient(90deg, var(--purple-accent), var(--cyan-accent));"></div>
+                            </div>
+                        </div>
+
+                        <div class="ctrl-btn-row">
+                            <button class="btn btn-primary btn-action-main" id="stretchStartBtn" onclick="toggleStretchTimer()" style="background:var(--purple-accent);">
+                                ▶ 开始压腿 (留10s准备)
+                            </button>
+                            <button class="btn btn-outline" id="stretchPauseBtn" onclick="toggleStretchTimer()" disabled>⏸ 暂停</button>
+                            <button class="btn btn-danger" onclick="stopStretchTimer(false)">⏹ 提前收功</button>
+                        </div>
+
+                        <div id="stretchSettingsArea"></div>
                     </div>
                 </div>
 
@@ -416,7 +414,7 @@
 
             </div>
 
-            <!-- 右侧机甲座舱 (PC端展示，移动端隐去) -->
+            <!-- 右侧机甲座舱 -->
             <div class="right-mecha-dock" id="rightMechaDock">
                 <div class="tactical-grid"></div>
                 <div class="mecha-interactive-viewport" id="mechaViewport">
@@ -430,7 +428,7 @@
         </main>
     </div>
 
-    <!-- 弹窗 1：悬挂脱杠 10 阶延时校准弹层 (Bottom Sheet) -->
+    <!-- 弹窗 1：悬挂脱杠 10 阶延时校准弹层 -->
     <div class="modal-overlay" id="hangLatencyModal" onclick="cancelHangLatencyModal()">
         <div class="modal-card bottom-sheet-card" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -446,9 +444,7 @@
                 <span id="hangLatencyRawScore" style="font-size:1.8rem; font-family:var(--font-mono); font-weight:900; color:var(--cyan-accent); margin-left:6px;">40s</span>
             </div>
 
-            <div class="latency-picker-grid" id="hangLatencyButtonsContainer">
-                <!-- 由 JS 动态注入 10 个倒序时长按钮 -->
-            </div>
+            <div class="latency-picker-grid" id="hangLatencyButtonsContainer"></div>
 
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:8px;">
                 <button class="btn btn-outline btn-sm flex-1" id="hangLatencyOriginalBtn" onclick="confirmHangLatency(0)">
@@ -459,7 +455,7 @@
         </div>
     </div>
 
-    <!-- 弹窗 2：引体/悬挂结算战报 (Bottom Sheet) -->
+    <!-- 弹窗 2：引体/悬挂结算战报 -->
     <div class="modal-overlay" id="hangResultModal" onclick="closeHangResultModal(false)">
         <div class="modal-card bottom-sheet-card" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -492,7 +488,6 @@
 
     <div id="appToast" class="app-toast"></div>
 
-    <!-- 脚本拓扑按序挂载 -->
     <script src="js/state.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/duty.js"></script>
