@@ -1,31 +1,27 @@
 // ================================================================
 //  pnf-timer.js: 压腿舒筋战钟
-//  规则：
-//  1. 统一配备 10 秒战前就位提前量，避免一按开始来不及架腿；
-//  2. 倒计时、秒表、PNF周天全模式下每一秒都清晰读秒报号！
-//  3. 左右脚各压一次 = 一组，换边与组间休整也全程报秒；
-//  4. 任务结束自动入册。
+//  特性：
+//  1. 倒计时单侧时长、做功组数、换边间歇、组间休整、就位提前量均可修改并自动记忆！
+//  2. 每一秒都清晰读秒报号，彻底消除静音死角！
 // ================================================================
 
 let stretchMode = 'countdown'; // 'countdown' | 'stopwatch' | 'pnf'
-let stretchState = 'idle'; // 'idle' | 'running' | 'paused'
-let stretchSeconds = 60;      // 单侧目标/秒表读数
-let stretchTarget = 60;       // 单侧目标秒数
-let stretchSets = 2;          // 总组数
-let stretchSwapRestSec = 10;  // 换边间隔
-let stretchSetRestSec = 20;   // 组间间隔
-let stretchPrepDuration = 10; // 战前就位提前量 (10s)
+let stretchState = 'idle';
+let stretchSeconds = 60;
+let stretchTarget = 60;
+let stretchSets = 2;
+let stretchSwapRestSec = 10;
+let stretchSetRestSec = 20;
+let stretchPrepDuration = 10;
 let stretchInterval = null;
 
-// 分组循环状态
-let stretchCycleSet = 1;       // 当前进行到第几组
-let stretchPhase = 'prep';     // 'prep' | 'left' | 'swap' | 'right' | 'setrest'
+let stretchCycleSet = 1;
+let stretchPhase = 'prep';
 let stretchPhaseRemaining = 0;
 let stretchPhaseTotal = 0;
-let stretchSetsCompleted = 0;  // 已完整完成组数
-let stretchSessionStart = 0;   // 起始时间戳
+let stretchSetsCompleted = 0;
+let stretchSessionStart = 0;
 
-// PNF 专用流状态
 let pnfSteps = [];
 let pnfStepIndex = 0;
 
@@ -100,18 +96,18 @@ window.switchStretchMode = function (mode) {
         stretchCycleSet = 1;
         stretchSeconds = stretchTarget;
         if (clock) clock.textContent = formatStretchTime(stretchTarget);
-        if (phase) phase.textContent = '目标倒计时 · 单侧 ' + stretchTarget + 's · 共 ' + stretchSets + ' 组 (留10s准备)';
-        if (counter) counter.textContent = '第 1 / ' + stretchSets + ' 组 · 左腿前置 (含10s提前量)';
+        if (phase) phase.textContent = '目标倒计时 · 单侧 ' + stretchTarget + 's · 共 ' + stretchSets + ' 组 (留' + stretchPrepDuration + 's准备)';
+        if (counter) counter.textContent = '第 1 / ' + stretchSets + ' 组 · 左腿前置';
         renderStretchCountdownSettings();
     } else if (mode === 'stopwatch') {
         stretchSeconds = 0;
         if (clock) clock.textContent = "00:00";
-        if (phase) phase.textContent = "正向秒表 · 留10s就位准备 (全程读秒)";
+        if (phase) phase.textContent = "正向秒表 · 留" + stretchPrepDuration + "s就位 (每秒读秒)";
         if (counter) counter.textContent = '秒表计时无上限';
         renderStretchStopwatchSettings();
     } else {
         if (clock) clock.textContent = formatStretchTime(stretchTarget);
-        if (phase) phase.textContent = "双腿PNF周天 (留10s就位准备)";
+        if (phase) phase.textContent = "双腿PNF周天 (留" + stretchPrepDuration + "s准备)";
         if (counter) counter.textContent = '双腿PNF · 共 ' + stretchSets + ' 组';
         renderPnfSettings();
     }
@@ -150,7 +146,6 @@ function startStretchTimer() {
     }
 
     if (stretchMode === 'stopwatch') {
-        // 秒表模式也带 10s 就位提前量
         stretchPhase = 'prep';
         stretchPhaseTotal = stretchPhaseRemaining = stretchPrepDuration;
         updateStretchPhaseUI(true);
@@ -174,7 +169,6 @@ function startStretchTimer() {
         return;
     }
 
-    // 目标倒计时模式：从 10s 战前就位提前量开始
     stretchSessionStart = Date.now();
     stretchSetsCompleted = 0;
     stretchCycleSet = 1;
@@ -238,12 +232,12 @@ function updateStretchPhaseUI(announce) {
     const setTag = '第 ' + stretchCycleSet + ' / ' + stretchSets + ' 组';
 
     if (stretchPhase === 'prep') {
-        if (phaseEl) phaseEl.textContent = '⏳ 战前就位准备 (双手扶稳，调整体位)';
-        if (counter) counter.textContent = '准备阶段 · 还有 ' + stretchPhaseRemaining + 's 开练';
-        if (announce) speakFast('战前就位，双手扶稳，10秒准备！');
+        if (phaseEl) phaseEl.textContent = '⏳ 战前就位准备 (双手扶稳)';
+        if (counter) counter.textContent = '准备阶段 · 还有 ' + stretchPhaseRemaining + 's';
+        if (announce) speakFast('双手扶稳，' + stretchPrepDuration + '秒准备！');
     } else if (stretchPhase === 'left' || stretchPhase === 'right') {
         if (phaseEl) phaseEl.textContent = setTag + ' · ' + stretchSideName(stretchPhase) + '压腿中 (每秒读秒)';
-        if (counter) counter.textContent = setTag + ' · ' + stretchSideName(stretchPhase) + (stretchPhase === 'left' ? ' (单侧' + stretchTarget + 's)' : '');
+        if (counter) counter.textContent = setTag + ' · ' + stretchSideName(stretchPhase) + ' (单侧' + stretchTarget + 's)';
         if (announce) speakFast(stretchSideName(stretchPhase) + '压腿，' + stretchTarget + '秒，深长吐气！');
     } else if (stretchPhase === 'swap') {
         if (phaseEl) phaseEl.textContent = setTag + ' · 左右脚换边休整 (还剩' + stretchPhaseRemaining + 's)';
@@ -251,7 +245,7 @@ function updateStretchPhaseUI(announce) {
         if (announce) speakFast('换另一条腿，' + stretchSwapRestSec + '秒间隔，抖腿放松。');
     } else {
         if (phaseEl) phaseEl.textContent = '组间休整 · 下一组即将开始 (还剩' + stretchPhaseRemaining + 's)';
-        if (counter) counter.textContent = '已完成 ' + stretchSetsCompleted + ' / ' + stretchSets + ' 组 · 组间休整 (' + stretchSetRestSec + '秒)';
+        if (counter) counter.textContent = '已完成 ' + stretchSetsCompleted + ' / ' + stretchSets + ' 组 · 休整 (' + stretchSetRestSec + '秒)';
         if (announce) speakFast('这一组完成，组间休息' + stretchSetRestSec + '秒。');
     }
 }
@@ -261,7 +255,6 @@ function tickCountdownPhase() {
     stretchPhaseRemaining--;
     updateStretchPhaseUI(false);
 
-    // ★ 每一秒都清晰读秒报号！
     if (stretchPhaseRemaining > 0) {
         speakFast(String(stretchPhaseRemaining));
     }
@@ -285,7 +278,7 @@ function advanceStretchPhase() {
         } else {
             stopStretchTimer(true);
         }
-    } else { // setrest
+    } else {
         stretchCycleSet++;
         enterStretchPhase('left');
     }
@@ -381,17 +374,17 @@ function updateStretchButtonUI(isRunning) {
     const btn = document.getElementById('stretchStartBtn');
     const pauseBtn = document.getElementById('stretchPauseBtn');
     if (btn) {
-        btn.innerText = isRunning ? "⏸ 暂停" : "▶ 开始压腿 (留10s准备)";
+        btn.innerText = isRunning ? "⏸ 暂停" : "▶ 开始压腿 (留" + stretchPrepDuration + "s准备)";
         btn.className = isRunning ? "btn btn-danger" : "btn btn-primary";
     }
     if (pauseBtn) pauseBtn.disabled = !isRunning;
 }
 
+// 自动记忆单侧秒数为新默认值
 window.setStretchCountdownSec = function (sec) {
     const val = Math.max(10, parseInt(sec) || 60);
     stretchTarget = val;
     stretchSeconds = val;
-
     if (window.data && data.settings) {
         data.settings.stretchDefaultDuration = val;
         saveData();
@@ -400,10 +393,10 @@ window.setStretchCountdownSec = function (sec) {
     if (stretchState === 'idle') switchStretchMode(stretchMode);
 };
 
+// 自动记忆组数为新默认值
 window.setStretchSets = function (n) {
     const val = Math.max(1, Math.min(10, parseInt(n) || 2));
     stretchSets = val;
-
     if (window.data && data.settings) {
         data.settings.stretchDefaultSets = val;
         saveData();
@@ -412,10 +405,10 @@ window.setStretchSets = function (n) {
     if (stretchState === 'idle') switchStretchMode(stretchMode);
 };
 
+// 自动记忆换边间隔为新默认值
 window.setStretchSwapRestSec = function (sec) {
     const val = Math.max(5, parseInt(sec) || 10);
     stretchSwapRestSec = val;
-
     if (window.data && data.settings) {
         data.settings.stretchSwapRestSec = val;
         saveData();
@@ -423,15 +416,27 @@ window.setStretchSwapRestSec = function (sec) {
     renderStretchCountdownSettings();
 };
 
+// 自动记忆组间间隔为新默认值
 window.setStretchSetRestSec = function (sec) {
     const val = Math.max(5, parseInt(sec) || 20);
     stretchSetRestSec = val;
-
     if (window.data && data.settings) {
         data.settings.stretchSetRestSec = val;
         saveData();
     }
     renderStretchCountdownSettings();
+};
+
+// 自动记忆准备提前量为新默认值
+window.setStretchPrepDuration = function (sec) {
+    const val = Math.max(3, parseInt(sec) || 10);
+    stretchPrepDuration = val;
+    if (window.data && data.settings) {
+        data.settings.stretchPrepDuration = val;
+        saveData();
+    }
+    renderStretchCountdownSettings();
+    if (stretchState === 'idle') switchStretchMode(stretchMode);
 };
 
 function chipRow(label, chips, activeVal, onclickName, accent, min, max, step) {
@@ -440,10 +445,10 @@ function chipRow(label, chips, activeVal, onclickName, accent, min, max, step) {
         return '<button type="button" class="' + cls + '" onclick="' + onclickName + '(' + v + ')">' + v + '秒</button>';
     }).join('');
     return '<div style="display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;">' +
-        '<span style="font-size:13px; color:var(--' + accent + ');">' + label + '</span>' +
+        '<span style="font-size:12.5px; color:var(--' + accent + ');">' + label + '</span>' +
         chipsHtml +
-        '<input type="number" value="' + activeVal + '" min="' + min + '" max="' + max + '" step="' + step + '" onchange="' + onclickName + '(this.value)" style="width:70px; text-align:center; color:var(--' + accent + '); font-weight:bold;">' +
-        '<span style="font-size:12px; color:var(--text-dim);">秒</span>' +
+        '<input type="number" value="' + activeVal + '" min="' + min + '" max="' + max + '" step="' + step + '" onchange="' + onclickName + '(this.value)" style="width:65px; text-align:center; color:var(--' + accent + '); font-weight:bold;">' +
+        '<span style="font-size:11px; color:var(--text-dim);">秒</span>' +
     '</div>';
 }
 
@@ -454,6 +459,7 @@ function renderStretchCountdownSettings() {
     const setPresets = [1, 2, 3, 4, 5, 6];
     const swapPresets = [5, 10, 15, 20, 30];
     const setRestPresets = [10, 20, 30, 45, 60];
+    const prepPresets = [5, 10, 15, 20];
 
     const durChips = durPresets.map(function (s) {
         const cls = (stretchTarget === s) ? 'preset-chip active' : 'preset-chip';
@@ -465,27 +471,30 @@ function renderStretchCountdownSettings() {
     }).join('');
 
     container.innerHTML =
-        '<div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:10px;">' +
+        '<div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:8px;">' +
             '<div style="display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;">' +
-                '<span style="font-size:13px; color:var(--text-muted);">单侧拉伸时长 (自动记忆):</span>' +
+                '<span style="font-size:12.5px; color:var(--text-muted);">单侧拉伸(自动记忆):</span>' +
                 durChips +
-                '<input type="number" value="' + stretchTarget + '" min="10" max="600" step="15" onchange="setStretchCountdownSec(this.value)" style="width:75px; text-align:center; color:var(--purple-accent); font-weight:bold;">' +
-                '<span style="font-size:12px; color:var(--text-dim);">秒</span>' +
+                '<input type="number" value="' + stretchTarget + '" min="10" max="600" step="15" onchange="setStretchCountdownSec(this.value)" style="width:70px; text-align:center; color:var(--purple-accent); font-weight:bold;">' +
+                '<span style="font-size:11px; color:var(--text-dim);">秒</span>' +
             '</div>' +
-            '<div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:8px; display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;">' +
-                '<span style="font-size:13px; color:var(--purple-accent);">做几组 (左右脚各压一次算一组):</span>' +
+            '<div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:6px; display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;">' +
+                '<span style="font-size:12.5px; color:var(--purple-accent);">计划组数(自动记忆):</span>' +
                 setChips +
-                '<input type="number" value="' + stretchSets + '" min="1" max="10" step="1" onchange="setStretchSets(this.value)" style="width:65px; text-align:center; color:var(--purple-accent); font-weight:bold;">' +
-                '<span style="font-size:12px; color:var(--text-dim);">组</span>' +
+                '<input type="number" value="' + stretchSets + '" min="1" max="10" step="1" onchange="setStretchSets(this.value)" style="width:60px; text-align:center; color:var(--purple-accent); font-weight:bold;">' +
+                '<span style="font-size:11px; color:var(--text-dim);">组</span>' +
             '</div>' +
-            '<div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:8px;">' +
-                chipRow('左右脚间隔时长 (自动记忆):', swapPresets, stretchSwapRestSec, 'setStretchSwapRestSec', 'cyan-accent', 5, 120, 5) +
+            '<div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:6px;">' +
+                chipRow('左右脚间隔(自动记忆):', swapPresets, stretchSwapRestSec, 'setStretchSwapRestSec', 'cyan-accent', 5, 120, 5) +
             '</div>' +
-            '<div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:8px;">' +
-                chipRow('每组之间间隔 (自动记忆):', setRestPresets, stretchSetRestSec, 'setStretchSetRestSec', 'green-accent', 5, 180, 5) +
+            '<div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:6px;">' +
+                chipRow('组间休整(自动记忆):', setRestPresets, stretchSetRestSec, 'setStretchSetRestSec', 'green-accent', 5, 180, 5) +
             '</div>' +
-            '<div style="font-size:12px; color:var(--text-muted); text-align:center;">' +
-                '⏱ 预计全程 ' + formatStretchTime(estimateStretchTotalSec(stretchSets)) + '（留10s准备 + 单侧 ' + stretchTarget + 's × ' + stretchSets + '组 + 换边/组间间隔）' +
+            '<div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:6px;">' +
+                chipRow('就位提前量(自动记忆):', prepPresets, stretchPrepDuration, 'setStretchPrepDuration', 'amber-accent', 3, 60, 1) +
+            '</div>' +
+            '<div style="font-size:11.5px; color:var(--text-muted); text-align:center; margin-top:2px;">' +
+                '⏱ 预计全程 ' + formatStretchTime(estimateStretchTotalSec(stretchSets)) + '（留' + stretchPrepDuration + 's准备 + 单侧 ' + stretchTarget + 's × ' + stretchSets + '组 + 间隔）' +
             '</div>' +
         '</div>';
 }
@@ -493,9 +502,13 @@ function renderStretchCountdownSettings() {
 function renderStretchStopwatchSettings() {
     const container = document.getElementById('stretchSettingsArea');
     if (!container) return;
+    const prepPresets = [5, 10, 15, 20];
     container.innerHTML =
-        '<div style="text-align:center; font-size:13px; color:var(--text-muted); padding:8px 0;">' +
-            '秒表正向模式：包含 10s 就位提前量，启动后全程每秒读秒，达到满意状态点击【⏹ 提前收功】自动封存！' +
+        '<div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:12px;">' +
+            '<div style="text-align:center; font-size:13px; color:var(--text-muted); margin-bottom:8px;">' +
+                '秒表正向模式：包含' + stretchPrepDuration + 's就位提前量，启动后全程每秒读秒，达到满意状态点击【⏹ 提前收功】自动封存！' +
+            '</div>' +
+            chipRow('就位提前量(自动记忆):', prepPresets, stretchPrepDuration, 'setStretchPrepDuration', 'amber-accent', 3, 60, 1) +
         '</div>';
 }
 
@@ -505,6 +518,7 @@ function renderPnfSettings() {
     const setPresets = [1, 2, 3, 4, 5, 6];
     const swapPresets = [5, 10, 15, 20, 30];
     const setRestPresets = [10, 20, 30, 45, 60];
+    const prepPresets = [5, 10, 15, 20];
 
     const setChips = setPresets.map(function (s) {
         const cls = (stretchSets === s) ? 'preset-chip active' : 'preset-chip';
@@ -512,21 +526,24 @@ function renderPnfSettings() {
     }).join('');
 
     container.innerHTML =
-        '<div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:10px;">' +
+        '<div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:8px;">' +
             '<div style="display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap;">' +
-                '<span style="font-size:13px; color:var(--purple-accent);">做几组 (左右脚各一次算一组):</span>' +
+                '<span style="font-size:12.5px; color:var(--purple-accent);">计划组数(自动记忆):</span>' +
                 setChips +
-                '<input type="number" value="' + stretchSets + '" min="1" max="10" step="1" onchange="setStretchSets(this.value)" style="width:65px; text-align:center; color:var(--purple-accent); font-weight:bold;">' +
-                '<span style="font-size:12px; color:var(--text-dim);">组</span>' +
+                '<input type="number" value="' + stretchSets + '" min="1" max="10" step="1" onchange="setStretchSets(this.value)" style="width:60px; text-align:center; color:var(--purple-accent); font-weight:bold;">' +
+                '<span style="font-size:11px; color:var(--text-dim);">组</span>' +
             '</div>' +
-            '<div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:8px;">' +
-                chipRow('左右脚间隔时长 (自动记忆):', swapPresets, stretchSwapRestSec, 'setStretchSwapRestSec', 'cyan-accent', 5, 120, 5) +
+            '<div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:6px;">' +
+                chipRow('左右脚间隔(自动记忆):', swapPresets, stretchSwapRestSec, 'setStretchSwapRestSec', 'cyan-accent', 5, 120, 5) +
             '</div>' +
-            '<div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:8px;">' +
-                chipRow('每组之间间隔 (自动记忆):', setRestPresets, stretchSetRestSec, 'setStretchSetRestSec', 'green-accent', 5, 180, 5) +
+            '<div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:6px;">' +
+                chipRow('组间休整(自动记忆):', setRestPresets, stretchSetRestSec, 'setStretchSetRestSec', 'green-accent', 5, 180, 5) +
             '</div>' +
-            '<div style="font-size:12px; color:var(--text-muted); line-height:1.5; text-align:center;">' +
-                '💡 <strong>闭眼听令口诀</strong>：初阶牵拉 ➔ 听到"发力"脚跟下踩对抗(吐气不憋气) ➔ 听到"下沉"彻底卸力加深 ➔ 全程读秒。' +
+            '<div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:6px;">' +
+                chipRow('就位提前量(自动记忆):', prepPresets, stretchPrepDuration, 'setStretchPrepDuration', 'amber-accent', 3, 60, 1) +
+            '</div>' +
+            '<div style="font-size:11.5px; color:var(--text-muted); line-height:1.5; text-align:center; margin-top:2px;">' +
+                '💡 <strong>闭眼听令口诀</strong>：初阶牵拉 ➔ 听到"发力"脚跟下踩对抗(吐气不憋气) ➔ 听到"下沉"彻底卸力加深 ➔ 全程每秒读秒。' +
             '</div>' +
         '</div>';
 }
@@ -547,10 +564,9 @@ function buildPnfSteps() {
     });
 
     const steps = [];
-    // 加入 10s 就位提前量
     steps.push({
-        title: '战前就位准备 (10秒缓冲)',
-        cue: 'PNF极意战前就位，双手扶稳，10秒就绪！',
+        title: '战前就位准备 (' + stretchPrepDuration + '秒缓冲)',
+        cue: 'PNF极意战前就位，双手扶稳，' + stretchPrepDuration + '秒就绪！',
         duration: stretchPrepDuration,
         set: 1,
         side: 'prep'

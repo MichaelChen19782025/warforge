@@ -1,9 +1,9 @@
 /**
  * 天罡洗髓 · 离心慢放 · 破糖战钟 (PRO)
  * 具备特性：
- * 1. 默认次数为 10 次/组，每一次手动更改后自动记忆为下一次的默认值；
- * 2. 读秒与语音指导：提前 250ms 盲听报“1”，撑起爆发提前报“起”；
- * 3. 完整支持 10 秒战前就位准备（倒数每秒报号）、多组间休整与一键跳过休息；
+ * 1. 组数、次数、慢下、撑起、休息、战前准备全参数开放且自动记忆为新默认值！
+ * 2. 提前 250ms 盲听报“1”，撑起爆发提前报“起”；
+ * 3. 完整支持战前就位准备（每秒倒数读秒）、多组间休整与一键跳过休息；
  * 4. 修复变量引用，完成后 100% 自动入册并播放激励收功语音。
  */
 
@@ -14,7 +14,7 @@
         currentSet: 1,
         totalSets: 2,
         currentRep: 1,
-        repsPerSet: 10, // 默认 10 次
+        repsPerSet: 10,
         downSec: 4.0,
         upSec: 1.0,
         restSec: 60,
@@ -73,28 +73,28 @@
     }
 
     function syncTimerInputs() {
-        if (window.data && data.settings) {
-            if (data.settings.eccentricDefaultReps !== undefined) {
-                timerState.repsPerSet = Math.max(1, parseInt(data.settings.eccentricDefaultReps) || 10);
-            }
-            if (data.settings.eccentricDefaultSets !== undefined) {
-                timerState.totalSets = Math.max(1, parseInt(data.settings.eccentricDefaultSets) || 2);
-            }
-            if (data.settings.eccentricRestSec !== undefined) {
-                timerState.restSec = Math.max(5, parseInt(data.settings.eccentricRestSec) || 60);
-            }
-        }
+        const s = (window.data && data.settings) ? data.settings : {};
+        if (s.eccentricDefaultReps !== undefined) timerState.repsPerSet = Math.max(1, parseInt(s.eccentricDefaultReps) || 10);
+        if (s.eccentricDefaultSets !== undefined) timerState.totalSets = Math.max(1, parseInt(s.eccentricDefaultSets) || 2);
+        if (s.eccentricDownSec !== undefined) timerState.downSec = Math.max(1, parseFloat(s.eccentricDownSec) || 4.0);
+        if (s.eccentricUpSec !== undefined) timerState.upSec = Math.max(0.5, parseFloat(s.eccentricUpSec) || 1.0);
+        if (s.eccentricRestSec !== undefined) timerState.restSec = Math.max(5, parseInt(s.eccentricRestSec) || 60);
+        if (s.eccentricPrepSec !== undefined) timerState.prepSec = Math.max(3, parseInt(s.eccentricPrepSec) || 10);
 
         const downInput = document.getElementById('timerDownInput');
         const upInput = document.getElementById('timerUpInput');
         const repsInput = document.getElementById('timerRepsInput');
         const setsInput = document.getElementById('timerSetsInput');
+        const restInput = document.getElementById('timerRestInput');
+        const prepInput = document.getElementById('timerPrepInput');
         const voiceSelect = document.getElementById('voiceEnabled');
 
-        if (downInput) timerState.downSec = Math.max(1, parseFloat(downInput.value) || 4.0);
-        if (upInput) timerState.upSec = Math.max(0.5, parseFloat(upInput.value) || 1.0);
+        if (downInput) downInput.value = timerState.downSec;
+        if (upInput) upInput.value = timerState.upSec;
         if (repsInput) repsInput.value = timerState.repsPerSet;
         if (setsInput) setsInput.value = timerState.totalSets;
+        if (restInput) restInput.value = timerState.restSec;
+        if (prepInput) prepInput.value = timerState.prepSec;
         if (voiceSelect) timerState.voiceEnabled = (voiceSelect.value === 'true');
 
         updateRepsChips(timerState.repsPerSet);
@@ -102,20 +102,18 @@
         updateCounterUI();
     }
 
+    // 次数修改：持久化为新默认值
     window.setEccentricQuickReps = function (reps) {
         const val = Math.max(1, parseInt(reps) || 10);
         timerState.repsPerSet = val;
-
         if (window.data && data.settings) {
             data.settings.eccentricDefaultReps = val;
             saveData();
         }
-
         const repsInput = document.getElementById('timerRepsInput');
         const repsDisplay = document.getElementById('eccRepsDisplay');
         if (repsInput) repsInput.value = val;
         if (repsDisplay) repsDisplay.textContent = val;
-
         updateRepsChips(val);
         updateCounterUI();
     };
@@ -131,20 +129,18 @@
         });
     }
 
+    // 组数修改：持久化为新默认值
     window.setEccentricQuickSets = function (sets) {
         const val = Math.max(1, parseInt(sets) || 2);
         timerState.totalSets = val;
-
         if (window.data && data.settings) {
             data.settings.eccentricDefaultSets = val;
             saveData();
         }
-
         const setsInput = document.getElementById('timerSetsInput');
         const setsDisplay = document.getElementById('eccSetsDisplay');
         if (setsInput) setsInput.value = val;
         if (setsDisplay) setsDisplay.textContent = val;
-
         updateSetsChips(val);
         updateCounterUI();
     };
@@ -159,6 +155,54 @@
             if (chip) chip.classList.toggle('active', n === sets);
         });
     }
+
+    // 慢降秒数修改：持久化为新默认值
+    window.setEccentricDownSec = function (sec) {
+        const val = Math.max(1, parseFloat(sec) || 4.0);
+        timerState.downSec = val;
+        if (window.data && data.settings) {
+            data.settings.eccentricDownSec = val;
+            saveData();
+        }
+        const downInput = document.getElementById('timerDownInput');
+        if (downInput) downInput.value = val;
+    };
+
+    // 撑起秒数修改：持久化为新默认值
+    window.setEccentricUpSec = function (sec) {
+        const val = Math.max(0.5, parseFloat(sec) || 1.0);
+        timerState.upSec = val;
+        if (window.data && data.settings) {
+            data.settings.eccentricUpSec = val;
+            saveData();
+        }
+        const upInput = document.getElementById('timerUpInput');
+        if (upInput) upInput.value = val;
+    };
+
+    // 组间休息修改：持久化为新默认值
+    window.setEccentricRestSec = function (sec) {
+        const val = Math.max(5, parseInt(sec) || 60);
+        timerState.restSec = val;
+        if (window.data && data.settings) {
+            data.settings.eccentricRestSec = val;
+            saveData();
+        }
+        const restInput = document.getElementById('timerRestInput');
+        if (restInput) restInput.value = val;
+    };
+
+    // 战前就位准备修改：持久化为新默认值
+    window.setEccentricPrepSec = function (sec) {
+        const val = Math.max(3, parseInt(sec) || 10);
+        timerState.prepSec = val;
+        if (window.data && data.settings) {
+            data.settings.eccentricPrepSec = val;
+            saveData();
+        }
+        const prepInput = document.getElementById('timerPrepInput');
+        if (prepInput) prepInput.value = val;
+    };
 
     function updateCounterUI() {
         const counterEl = document.getElementById('timerSetCounter');
@@ -376,7 +420,6 @@
 
         resetButtonStates();
 
-        // 自动入册 (修复 timerDownSec / timerUpSec 变量引用)
         if (window.data && data.logs) {
             const duty = (typeof getDutyShiftInfo === 'function') ? getDutyShiftInfo() : { dutyDateStr: new Date().toISOString().slice(0, 10), shift: { name: '日常' } };
             const totalReps = timerState.totalSets * timerState.repsPerSet;
@@ -430,7 +473,7 @@
         const skipBtn = document.getElementById('timerSkipRestBtn');
         if (startBtn) {
             startBtn.disabled = false;
-            startBtn.textContent = '▶ 开始运转 (留10s准备)';
+            startBtn.textContent = '▶ 开始运转 (留' + timerState.prepSec + 's准备)';
         }
         if (pauseBtn) {
             pauseBtn.disabled = true;
@@ -453,7 +496,7 @@
         timerState.spokenCues.clear();
 
         updateCounterUI();
-        updateDisplay(`第 1 组 · 战前就位 (趴下准备)`, timerState.prepSec, timerState.prepSec, '10s战前就位', 'phase-prep');
+        updateDisplay(`第 1 组 · 战前就位 (趴下准备)`, timerState.prepSec, timerState.prepSec, timerState.prepSec + 's战前就位', 'phase-prep');
 
         const startBtn = document.getElementById('timerStartBtn');
         const pauseBtn = document.getElementById('timerPauseBtn');
@@ -465,7 +508,7 @@
         }
         if (skipBtn) skipBtn.classList.add('hidden');
 
-        speakFast('战前就位，10秒准备！');
+        speakFast('战前就位，' + timerState.prepSec + '秒准备！');
         timerState.intervalId = setInterval(onTimerTick, 100);
     };
 

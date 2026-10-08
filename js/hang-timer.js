@@ -1,23 +1,22 @@
 /**
-天罡洗髓 · 引体全能舱 & 极限悬挂战钟 (PRO)
-默认直接采用【极限悬挂】(静态单杠死磕)；
-【首屏中置主战区】：大表盘与正中央巨型开始按钮直接可见，无需滚屏；
-【10阶倒序脱杠延时校准补偿】：停表后自动弹出扣减延时的选择板
-（以停表数先减 4 秒为最高值，如 40 秒停表产生：36, 35, 34, 33, 32, 31, 30, 29, 28, 27），
-单手轻触即可核销脱杠落地与点击手机的时间差！
-*/
+ * 天罡洗髓 · 引体全能舱 & 极限悬挂战钟 (PRO)
+ * 特性：
+ * 1. 悬挂目标秒数、就位提前量、引体直录次数均可配置并自动持久化为新默认值！
+ * 2. 停表自带 10 阶倒序脱杠延时补偿；
+ * 3. 悬挂期间每秒读秒报号。
+ */
 (function () {
 var hangState = {
-variant: 'hang', // 默认极限悬挂
-mode: 'stopwatch', // 默认正向秒表
-status: 'idle', // 'idle' | 'prep' | 'running'
-prepDuration: 10,
-countdownTarget: 30,
-elapsedSeconds: 0,
-timeRemaining: 0,
-intervalId: null,
-repsCount: 8,
-capturedRawSeconds: 0
+    variant: 'hang',
+    mode: 'stopwatch',
+    status: 'idle',
+    prepDuration: 10,
+    countdownTarget: 30,
+    elapsedSeconds: 0,
+    timeRemaining: 0,
+    intervalId: null,
+    repsCount: 8,
+    capturedRawSeconds: 0
 };
 var audioCtx = null;
 function getAudioCtx() {
@@ -68,10 +67,14 @@ function loadPb() {
     if (window.data && data.settings) {
         if (data.settings.hangPrepDuration) hangState.prepDuration = data.settings.hangPrepDuration;
         if (data.settings.hangCountdownTarget) hangState.countdownTarget = data.settings.hangCountdownTarget;
+        if (data.settings.hangDefaultReps) hangState.repsCount = data.settings.hangDefaultReps;
     }
     var stored = localStorage.getItem('hang_pb_' + hangState.variant);
     var pb = stored ? parseInt(stored) : (data && data.settings && data.settings.hangBestRecord ? data.settings.hangBestRecord : 0);
     updatePbDisplay(pb);
+
+    var input = document.getElementById('hangRepsInput');
+    if (input) input.value = hangState.repsCount;
 }
 
 function savePb(newScore) {
@@ -96,8 +99,13 @@ function updatePbDisplay(pb) {
     }
 }
 
+// 变式切换：保存为默认值
 window.switchHangVariant = function (variant) {
     hangState.variant = variant;
+    if (window.data && data.settings) {
+        data.settings.hangDefaultVariant = variant;
+        saveData();
+    }
     var variants = ['standard', 'wide', 'hang'];
     for (var i = 0; i < variants.length; i++) {
         var v = variants[i];
@@ -135,8 +143,13 @@ window.switchHangMode = function (mode) {
     resetHangAll();
 };
 
+// 次数修改：自动记忆为默认
 window.setQuickHangReps = function (reps) {
     hangState.repsCount = parseInt(reps) || 8;
+    if (window.data && data.settings) {
+        data.settings.hangDefaultReps = hangState.repsCount;
+        saveData();
+    }
     var input = document.getElementById('hangRepsInput');
     if (input) input.value = hangState.repsCount;
     var presets = [3, 5, 8, 10, 12];
@@ -202,6 +215,7 @@ window.discardHangReps = function () {
     if (typeof showToast === 'function') showToast('🗑️ 本次已放弃');
 };
 
+// 悬挂目标倒计时修改：自动记忆为默认
 window.setHangCountdownTime = function (sec) {
     var val = parseInt(sec) || 30;
     hangState.countdownTarget = val;
@@ -215,6 +229,24 @@ window.setHangCountdownTime = function (sec) {
     });
     if (hangState.status === 'idle') {
         updateDialValue(hangState.countdownTarget, 'TARGET SEC');
+    }
+};
+
+// 悬挂准备提前量修改：自动记忆为默认
+window.setHangPrepDuration = function (sec) {
+    var val = Math.max(3, parseInt(sec) || 10);
+    hangState.prepDuration = val;
+    if (window.data && data.settings) {
+        data.settings.hangPrepDuration = val;
+        saveData();
+    }
+    var chips = document.querySelectorAll('#hangPrepPresets .preset-chip');
+    chips.forEach(function (c) {
+        c.classList.toggle('active', c.textContent.indexOf(val + '秒') !== -1);
+    });
+    var btn = document.getElementById('hangMainActionBtn');
+    if (btn && hangState.status === 'idle') {
+        btn.textContent = '开始悬挂 (留' + val + 's准备)';
     }
 };
 
@@ -311,9 +343,6 @@ function stopHangInterval() {
     }
 }
 
-// ================================================================
-// ★ 核心创新点：10阶倒序脱杠延时校准机制 (纯净字符串拼接，杜绝嵌套模板)
-// ================================================================
 function triggerStopAndCalibration() {
     stopHangInterval();
     hangState.capturedRawSeconds = hangState.mode === 'stopwatch'
@@ -333,8 +362,6 @@ function triggerStopAndCalibration() {
     if (rawEl) rawEl.textContent = hangState.capturedRawSeconds + 's';
     if (origBtn) origBtn.textContent = '⏱️ 按停表原时 (' + hangState.capturedRawSeconds + 's) 记录';
 
-    // 以停表数先减 4 秒为最高值，倒序生成 10 个按钮
-    // 例如 40 秒停表产生：36, 35, 34, 33, 32, 31, 30, 29, 28, 27
     var startCalib = Math.max(1, hangState.capturedRawSeconds - 4);
     var htmlButtons = '';
     for (var i = 0; i < 10; i++) {
@@ -372,7 +399,7 @@ function settleFinalScore(score) {
     showResultModal(score, score >= hangState.countdownTarget);
     hangState.status = 'idle';
     var actionBtn = document.getElementById('hangMainActionBtn');
-    if (actionBtn) actionBtn.textContent = '▶ 开始悬挂';
+    if (actionBtn) actionBtn.textContent = '▶ 开始悬挂 (留' + hangState.prepDuration + 's准备)';
 }
 
 function showResultModal(scoreSec, isSuccess) {
@@ -437,7 +464,7 @@ window.resetHangAll = function () {
     var actionBtn = document.getElementById('hangMainActionBtn');
     var hintEl = document.getElementById('hangStatusHint');
     var tapHint = document.getElementById('hangTapStopHint');
-    if (actionBtn) actionBtn.textContent = '▶ 开始悬挂';
+    if (actionBtn) actionBtn.textContent = '▶ 开始悬挂 (留' + hangState.prepDuration + 's准备)';
     if (hintEl) hintEl.textContent = 'READY';
     if (tapHint) tapHint.textContent = '拍击圆盘立即结算';
 
@@ -489,6 +516,6 @@ window.closeHangResultModal = function (shouldSave) {
 document.addEventListener('DOMContentLoaded', function () {
     loadPb();
     setRingProgress(0);
-    window.switchHangVariant('hang');
+    window.switchHangVariant(hangState.variant);
 });
 })();
