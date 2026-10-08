@@ -2,9 +2,9 @@
  * 天罡洗髓 · 离心慢放 · 破糖战钟 (PRO)
  * 具备特性：
  * 1. 默认次数为 10 次/组，每一次手动更改后自动记忆为下一次的默认值；
- * 2. 读秒与语音指导完全参考《锻炼计划.html》：提前 250ms 盲听报“1”，撑起爆发提前报“起”；
- * 3. 完整支持 10 秒战前就位准备、多组间休整与一键跳过休息；
- * 4. 完成后自动入册并播放激励收功语音。
+ * 2. 读秒与语音指导：提前 250ms 盲听报“1”，撑起爆发提前报“起”；
+ * 3. 完整支持 10 秒战前就位准备（倒数每秒报号）、多组间休整与一键跳过休息；
+ * 4. 修复变量引用，完成后 100% 自动入册并播放激励收功语音。
  */
 
 (function () {
@@ -27,7 +27,6 @@
         spokenCues: new Set()
     };
 
-    // Web Audio 战术音效中枢
     let audioCtx = null;
     function getAudioCtx() {
         if (!audioCtx) {
@@ -57,7 +56,6 @@
         } catch (e) { }
     }
 
-    // 快速中文语音合成（对齐锻炼计划.html：1.4倍速，干脆利落）
     function speakFast(text) {
         if (!timerState.voiceEnabled) return;
         if (!('speechSynthesis' in window)) return;
@@ -74,7 +72,6 @@
         }
     }
 
-    // 初始化时从本地配置载入保存的默认次数与组数
     function syncTimerInputs() {
         if (window.data && data.settings) {
             if (data.settings.eccentricDefaultReps !== undefined) {
@@ -105,7 +102,6 @@
         updateCounterUI();
     }
 
-    // 手动设定次数并持久化保存
     window.setEccentricQuickReps = function (reps) {
         const val = Math.max(1, parseInt(reps) || 10);
         timerState.repsPerSet = val;
@@ -135,7 +131,6 @@
         });
     }
 
-    // 手动设定组数并持久化保存
     window.setEccentricQuickSets = function (sets) {
         const val = Math.max(1, parseInt(sets) || 2);
         timerState.totalSets = val;
@@ -205,7 +200,6 @@
         }
     }
 
-    // 核心时钟高敏循环 (100ms 驱动)
     function onTimerTick() {
         const now = Date.now();
         const delta = (now - timerState.lastTickTimestamp) / 1000;
@@ -215,7 +209,7 @@
         timerState.phaseTimeRemaining -= delta;
         const currSecInt = Math.ceil(timerState.phaseTimeRemaining);
 
-        // 1. 战前准备 10s (就位准备)
+        // 1. 战前准备 10s (每秒读秒)
         if (timerState.status === 'prep') {
             updateDisplay(
                 `第 ${timerState.currentSet} 组 · 战前就位 (趴下准备)`,
@@ -225,8 +219,7 @@
                 'phase-prep'
             );
 
-            // 倒数 3, 2, 1 逐秒念
-            if (currSecInt <= 3 && currSecInt >= 1 && prevSecInt !== currSecInt) {
+            if (currSecInt >= 1 && prevSecInt !== currSecInt) {
                 const cue = `prep_${currSecInt}`;
                 if (!timerState.spokenCues.has(cue)) {
                     timerState.spokenCues.add(cue);
@@ -262,7 +255,6 @@
                     speakFast(String(countNum));
                 }
             }
-            // 最后一秒：提前 250ms 盲听报号 '1'
             else if (countNum === 1 && timerState.phaseTimeRemaining <= 0.25) {
                 const cue = `s${timerState.currentSet}_r${timerState.currentRep}_d_1_anticipate`;
                 if (!timerState.spokenCues.has(cue)) {
@@ -287,7 +279,6 @@
                 'phase-up'
             );
 
-            // 撑起瞬间提前 250ms 播报 '起'
             const cue = `s${timerState.currentSet}_r${timerState.currentRep}_u_anticipate`;
             if (timerState.phaseTimeRemaining <= 0.25 && !timerState.spokenCues.has(cue)) {
                 timerState.spokenCues.add(cue);
@@ -323,7 +314,7 @@
                     speakFast('休息还剩30秒');
                 } else if (currSecInt === 10) {
                     speakFast('准备，还剩10秒');
-                } else if (currSecInt <= 3 && currSecInt >= 1) {
+                } else if (currSecInt <= 5 && currSecInt >= 1) {
                     playBeep(700, 0.08);
                     speakFast(String(currSecInt));
                 }
@@ -385,7 +376,7 @@
 
         resetButtonStates();
 
-        // 自动入册
+        // 自动入册 (修复 timerDownSec / timerUpSec 变量引用)
         if (window.data && data.logs) {
             const duty = (typeof getDutyShiftInfo === 'function') ? getDutyShiftInfo() : { dutyDateStr: new Date().toISOString().slice(0, 10), shift: { name: '日常' } };
             const totalReps = timerState.totalSets * timerState.repsPerSet;
@@ -407,8 +398,8 @@
                 dutyTag: `${duty.shift.name} (归属${duty.dutyDateStr.slice(5)})`,
                 startTimeStamp: (typeof getFullTimestamp === 'function') ? getFullTimestamp(new Date(Date.now() - durMin * 60000)) : new Date().toISOString(),
                 endTimeStamp: (typeof getFullTimestamp === 'function') ? getFullTimestamp() : new Date().toISOString(),
-                downSec: timerDownSec,
-                upSec: timerUpSec,
+                downSec: timerState.downSec,
+                upSec: timerState.upSec,
                 tutSeconds: tutSec,
                 note: `慢速离心战钟自动入册：完成 ${timerState.totalSets} 组 × ${timerState.repsPerSet} 次，有效TUT做功 ${tutSec} 秒。`,
                 createdAt: new Date().toISOString()
@@ -416,7 +407,6 @@
 
             data.logs.push(logEntry);
 
-            // 清除队列中的离心项
             if (Array.isArray(data.workoutQueue)) {
                 data.workoutQueue = data.workoutQueue.filter(x => !(x.actionId === 'act_pushup_ecc' || x.name.includes('离心')));
             }
@@ -449,7 +439,6 @@
         if (skipBtn) skipBtn.classList.add('hidden');
     }
 
-    // 公开操作方法
     window.startEccentricTimer = function () {
         getAudioCtx();
         syncTimerInputs();

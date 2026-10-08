@@ -1,7 +1,10 @@
 // ================================================================
 //  quick-action.js: 慢跑巡航 + 靠墙静蹲 + 墙角扩胸
-//  零嵌套反引号！彻底免疫脚手架正则吞噬！全部拼字符串！
-//  首屏中置主战区：大时钟与开始按键正中直接可见，零滚动即可操作！
+//  特性：
+//  1. 任何项目均配备 10 秒战前就位提前量（语音倒数 10, 9... 1）；
+//  2. 秒级做功项目（静蹲、扩胸）每一秒都清晰读秒报号，彻底解决不读秒问题；
+//  3. 换边与组间休整全周期自动播报与每秒读秒；
+//  4. 纯净字符串拼接，彻底免疫脚手架正则吞噬！
 // ================================================================
 
 var currentQuickActionId = 'act_jog_glyco';
@@ -15,15 +18,15 @@ function renderTopTabs() {
     if (!bar) return;
 
     var currentActive = document.querySelector('.tab-btn.active');
-    var activeTab = currentActive ? currentActive.dataset.tab : 'action_quick';
+    var activeTab = currentActive ? currentActive.dataset.tab : 'squat_deck';
 
     var tabs = [
-        { id: 'action_quick', label: '🏃 慢跑', tip: '【慢跑巡航】：餐后平抑血糖，目标倒计时！' },
-        { id: 'squat_deck', label: '🧱 靠墙静蹲', tip: '【靠墙静蹲】：背贴墙大腿90°，支持徒手/单物大米/双哑铃负重！' },
-        { id: 'chest_deck', label: '👐 墙角扩胸', tip: '【墙角扩胸】：左/右交替墙角拉伸，改善圆肩驼背！' },
-        { id: 'hang_timer', label: '🧗 极限悬挂', tip: '【极限悬挂】：默认静态单杠死磕，脱杠停表后自带10个延时补偿按钮！' },
-        { id: 'timer', label: '🔥 离心慢放', tip: '【离心慢放】：盲听提前250ms报号，默认10次。' },
-        { id: 'stretch_timer', label: '🧘 压腿', tip: '【压腿舒筋】：柔韧拉伸，全程读秒。' },
+        { id: 'squat_deck', label: '🧱 靠墙静蹲', tip: '【靠墙静蹲】：10s就位提前量，做功每秒读秒，支持徒手/单物/双物负重！' },
+        { id: 'chest_deck', label: '👐 墙角扩胸', tip: '【墙角扩胸】：10s就位提前量，做功每秒读秒，左右交替拉伸改善圆肩！' },
+        { id: 'action_quick', label: '🏃 慢跑', tip: '【慢跑巡航】：10s起跑提前量，餐后平抑血糖，目标倒计时！' },
+        { id: 'hang_timer', label: '🧗 极限悬挂', tip: '【极限悬挂】：10s就位提前量，默认静态单杠死磕，自带10阶延时补偿！' },
+        { id: 'timer', label: '🔥 离心慢放', tip: '【离心慢放】：10s就位提前量，盲听提前250ms报号，默认10次。' },
+        { id: 'stretch_timer', label: '🧘 压腿', tip: '【压腿舒筋】：10s就位提前量，做功与换边全程读秒。' },
         { id: 'workout_deck', label: '⚔️ 即时出征台', tip: '【即时出征台】：管理 5 套战术预设方案。' },
         { id: 'dashboard', label: '🧬 气血中枢', tip: '【气血中枢】：做功大盘与宏观战令。' },
         { id: 'log', label: '🥋 淬体实录', tip: '【淬体实录】：历史明细矩阵与 CSV 导出。' },
@@ -49,7 +52,7 @@ function renderTopTabs() {
 }
 
 // ----------------------------------------------------------------
-// 1. 慢跑控制面板（首屏中置主战区）
+// 1. 慢跑控制面板（配备 10s 就位提前量）
 // ----------------------------------------------------------------
 function renderActionQuickPanel() {
     var container = document.getElementById('actionQuickContainer');
@@ -79,17 +82,26 @@ function renderActionQuickPanel() {
 
     if (!item.targetMinutes) item.targetMinutes = 25;
     var isRunning = (item.status === 'running');
+    var prepSec = 10;
 
     var timerDisplay = String(item.targetMinutes).padStart(2, '0') + ':00';
-    var phaseTitle = '🎯 设定目标 ' + item.targetMinutes + ' 分钟 (时间到自动封存)';
+    var phaseTitle = '🎯 计划巡航 ' + item.targetMinutes + ' 分钟 (含10s起跑提前量)';
 
     if (isRunning && item.startTime) {
         var elapsed = Math.floor((Date.now() - new Date(item.startTime).getTime()) / 1000);
-        var remSec = Math.max(0, (item.targetMinutes * 60) - elapsed);
-        var m = String(Math.floor(remSec / 60)).padStart(2, '0');
-        var s = String(remSec % 60).padStart(2, '0');
-        timerDisplay = m + ':' + s;
-        phaseTitle = '⚡ 慢跑巡航中 · 骨骼肌GLUT4持续汲糖';
+        if (elapsed < prepSec) {
+            var remPrep = prepSec - elapsed;
+            timerDisplay = '00:' + String(remPrep).padStart(2, '0');
+            phaseTitle = '⏳ 战前就位准备 · 还有 ' + remPrep + ' 秒起跑';
+        } else {
+            var runElapsed = elapsed - prepSec;
+            var totalRunSec = item.targetMinutes * 60;
+            var remSec = Math.max(0, totalRunSec - runElapsed);
+            var m = String(Math.floor(remSec / 60)).padStart(2, '0');
+            var s = String(remSec % 60).padStart(2, '0');
+            timerDisplay = m + ':' + s;
+            phaseTitle = '⚡ 慢跑巡航中 · 骨骼肌GLUT4持续汲糖';
+        }
     }
 
     var presetMins = [15, 20, 25, 30, 40, 60];
@@ -102,7 +114,7 @@ function renderActionQuickPanel() {
 
     var mainActionBtnHtml = isRunning
         ? '<button class="btn btn-danger hero-main-action-btn" onclick="stopQuickJog(false)">⏹️ 提前收功并封存</button>'
-        : '<button class="btn btn-success hero-main-action-btn" onclick="startQuickJog()">▶️ 开始慢跑倒计时</button>';
+        : '<button class="btn btn-success hero-main-action-btn" onclick="startQuickJog()">▶️ 开始慢跑 (留10s起跑准备)</button>';
 
     container.innerHTML =
         '<div class="cyber-card" style="border-color:var(--cyan-accent); text-align:center;">' +
@@ -125,11 +137,29 @@ function renderActionQuickPanel() {
     if (isRunning) {
         quickTimerInterval = setInterval(function () {
             var el = document.getElementById('quickTimerDisplay');
+            var subEl = document.getElementById('quickTimerSubPhase');
             if (!el || !item.startTime) return;
 
             var elaps = Math.floor((Date.now() - new Date(item.startTime).getTime()) / 1000);
+
+            // 1. 战前就位准备 10s (每秒倒数读秒)
+            if (elaps < prepSec) {
+                var remP = prepSec - elaps;
+                el.textContent = '00:' + String(remP).padStart(2, '0');
+                if (subEl) subEl.textContent = '⏳ 战前就位准备 · 还有 ' + remP + ' 秒起跑';
+                speakFast(String(remP));
+                return;
+            }
+
+            // 刚跨入慢跑正轨
+            if (elaps === prepSec && !quickActionSpokenCues.has('jog_started')) {
+                quickActionSpokenCues.add('jog_started');
+                speakFast('起跑，保持呼吸，开始巡航！');
+            }
+
+            var runElaps = elaps - prepSec;
             var totalSec = item.targetMinutes * 60;
-            var rem = totalSec - elaps;
+            var rem = totalSec - runElaps;
 
             if (rem <= 0) {
                 clearInterval(quickTimerInterval);
@@ -139,9 +169,18 @@ function renderActionQuickPanel() {
                 return;
             }
 
+            // 最后10秒每秒读秒倒数
+            if (rem <= 10 && rem > 0) {
+                speakFast(String(rem));
+            } else if (rem % 300 === 0 && !quickActionSpokenCues.has('jog_rem_' + rem)) {
+                quickActionSpokenCues.add('jog_rem_' + rem);
+                speakFast('还剩' + Math.round(rem / 60) + '分钟');
+            }
+
             var mm = String(Math.floor(rem / 60)).padStart(2, '0');
             var ss = String(rem % 60).padStart(2, '0');
             el.textContent = mm + ':' + ss;
+            if (subEl) subEl.textContent = '⚡ 慢跑巡航中 · 骨骼肌GLUT4持续汲糖';
         }, 1000);
     }
 }
@@ -169,12 +208,11 @@ function startQuickJog() {
     item.endTime = '';
     item.durationMin = 0;
 
+    quickActionSpokenCues.clear();
     saveData();
     renderActionQuickPanel();
 
-    if (typeof speakFast === 'function') {
-        speakFast('慢跑倒计时开始，设定' + item.targetMinutes + '分钟，保持平稳呼吸！');
-    }
+    speakFast('慢跑准备，10秒就位准备起跑！');
 }
 
 function stopQuickJog(isAuto) {
@@ -225,7 +263,7 @@ function stopQuickJog(isAuto) {
 
 // ----------------------------------------------------------------
 // 2. 靠墙静蹲专属工作战位
-// ★ 完美支持徒手自重、单物大米、双手置于左右大腿根部的双哑铃对称/非对称负重
+// ★ 配备 10s 贴墙就位提前量；做功阶段每一秒都清晰读秒报号！
 // ----------------------------------------------------------------
 function renderSquatDeckPanel() {
     var container = document.getElementById('squatDeckContainer');
@@ -265,6 +303,7 @@ function renderSquatDeckPanel() {
     var isRunning = (item.status === 'running');
     var targetSec = item.targetSeconds || 60;
     var targetSets = item.targetSets || 3;
+    var prepSec = 10;
 
     var loadBadgeDesc = '';
     if (s.squatDefaultMode === 'bodyweight') {
@@ -282,22 +321,20 @@ function renderSquatDeckPanel() {
     }
 
     var timerDisplay = '01:00';
-    var phaseTitle = '🎯 计划 ' + targetSets + ' 组 · 单组 ' + targetSec + 's (组间休60s)';
+    var phaseTitle = '🎯 计划 ' + targetSets + ' 组 · 单组 ' + targetSec + 's (含10s就位提前量)';
 
     if (isRunning && item.startTime) {
         var elapsed = Math.floor((Date.now() - new Date(item.startTime).getTime()) / 1000);
-        var info = getSquatSchedulePhase(targetSec, targetSets, elapsed);
+        var info = getSquatSchedulePhase(targetSec, targetSets, elapsed, prepSec);
         var mm = String(Math.floor(info.remInPhase / 60)).padStart(2, '0');
         var ss = String(info.remInPhase % 60).padStart(2, '0');
         timerDisplay = mm + ':' + ss;
-        phaseTitle = info.isWork
-            ? '🦵 第 ' + info.currentSet + ' / ' + info.targetSets + ' 组 · 大腿水平90°持续做功'
-            : '☕ 组间休息中 · 慢走抖腿 (还剩 ' + info.remInPhase + 's)';
+        phaseTitle = info.phaseName;
     }
 
     var mainActionBtnHtml = isRunning
         ? '<button class="btn btn-danger hero-main-action-btn" onclick="stopSquatWorkout(false)">⏹️ 提前收功并封存</button>'
-        : '<button class="btn btn-success hero-main-action-btn" onclick="startSquatWorkout()">▶️ 开始靠墙静蹲</button>';
+        : '<button class="btn btn-success hero-main-action-btn" onclick="startSquatWorkout()">▶️ 开始静蹲 (留10s贴墙就位)</button>';
 
     var configPanelHtml = '';
     if (!isRunning) {
@@ -382,7 +419,7 @@ function renderSquatDeckPanel() {
         configPanelHtml =
             '<div class="squat-load-panel">' +
                 '<div class="squat-load-header">' +
-                    '<span class="squat-load-title">⚖️ 负重与姿态配置 (后背平贴, 大腿与小腿约90°)</span>' +
+                    '<span class="squat-load-title">⚖️ 负重与姿态配置 (后背平贴, 大腿水平约90°)</span>' +
                     '<span style="font-size:10.5px; color:var(--text-muted);">' + loadBadgeDesc + '</span>' +
                 '</div>' +
                 modeChips +
@@ -421,7 +458,7 @@ function renderSquatDeckPanel() {
             if (!el || !item.startTime) return;
 
             var elaps = Math.floor((Date.now() - new Date(item.startTime).getTime()) / 1000);
-            var inf = getSquatSchedulePhase(targetSec, targetSets, elaps);
+            var inf = getSquatSchedulePhase(targetSec, targetSets, elaps, prepSec);
 
             if (inf.isDone) {
                 clearInterval(squatTimerInterval);
@@ -431,23 +468,31 @@ function renderSquatDeckPanel() {
                 return;
             }
 
+            // 阶段切换提示
             if (!quickActionSpokenCues.has(inf.phaseKey)) {
                 quickActionSpokenCues.add(inf.phaseKey);
-                if (inf.isWork) {
-                    speakFast('第' + inf.currentSet + '组静蹲开始，背贴墙大腿水平90度，坚持' + targetSec + '秒！');
+                if (inf.isPrep) {
+                    speakFast('战前就位，后背贴墙，大腿水平90度，10秒准备！');
+                } else if (inf.isWork) {
+                    speakFast('第' + inf.currentSet + '组静蹲开始，坚持' + targetSec + '秒！');
                 } else {
-                    speakFast('第' + inf.currentSet + '组完成！组间休息1分钟，慢走抖腿。');
+                    speakFast('第' + inf.currentSet + '组完成！组间休整1分钟，慢走抖腿。');
                 }
             }
 
-            if (!inf.isWork && inf.remInPhase === 5 && !quickActionSpokenCues.has('warn_rest_' + inf.currentSet)) {
-                quickActionSpokenCues.add('warn_rest_' + inf.currentSet);
-                speakFast('还有5秒，靠墙就位，准备下一组！');
-            }
-
-            if (inf.isWork && inf.remInPhase <= 3 && inf.remInPhase > 0 && !quickActionSpokenCues.has('work_count_' + inf.currentSet + '_' + inf.remInPhase)) {
-                quickActionSpokenCues.add('work_count_' + inf.currentSet + '_' + inf.remInPhase);
+            // 每一秒都读秒！彻底消除不读秒盲区
+            if (inf.isPrep) {
                 speakFast(String(inf.remInPhase));
+            } else if (inf.isWork) {
+                speakFast(String(inf.remInPhase));
+            } else {
+                // 休息阶段：最后10秒预警并每秒倒数读秒
+                if (inf.remInPhase === 10 && !quickActionSpokenCues.has('squat_warn_rest_' + inf.currentSet)) {
+                    quickActionSpokenCues.add('squat_warn_rest_' + inf.currentSet);
+                    speakFast('还剩10秒，靠墙就位！');
+                } else if (inf.remInPhase <= 5 && inf.remInPhase > 0) {
+                    speakFast(String(inf.remInPhase));
+                }
             }
 
             var mm = String(Math.floor(inf.remInPhase / 60)).padStart(2, '0');
@@ -455,52 +500,71 @@ function renderSquatDeckPanel() {
             el.textContent = mm + ':' + ss;
 
             if (subEl) {
-                subEl.innerHTML = inf.isWork
-                    ? '<span style="color:var(--green-accent); font-weight:bold;">🦵 第 ' + inf.currentSet + ' / ' + inf.targetSets + ' 组 · 等长收缩坚持中</span>'
-                    : '<span style="color:var(--amber-accent); font-weight:bold;">☕ 组间休息中 · 1分钟休整 (还剩 ' + inf.remInPhase + 's)</span>';
+                subEl.innerHTML = inf.isPrep
+                    ? '<span style="color:var(--amber-accent); font-weight:bold;">⏳ 战前就位中 · 还有 ' + inf.remInPhase + 's 开练</span>'
+                    : (inf.isWork
+                        ? '<span style="color:var(--green-accent); font-weight:bold;">🦵 第 ' + inf.currentSet + ' / ' + inf.targetSets + ' 组 · 大腿水平90°做功中</span>'
+                        : '<span style="color:var(--amber-accent); font-weight:bold;">☕ 组间休整中 · 1分钟休息 (剩余 ' + inf.remInPhase + 's)</span>');
             }
         }, 1000);
     }
 }
 
-function getSquatSchedulePhase(targetSec, targetSets, elapsedSec) {
-    var restSec = 60;
-    var totalScheduleSec = (targetSets - 1) * (targetSec + restSec) + targetSec;
-    if (elapsedSec >= totalScheduleSec) return { isDone: true, totalScheduleSec: totalScheduleSec };
+function getSquatSchedulePhase(targetSec, targetSets, elapsedSec, prepSec) {
+    prepSec = (prepSec !== undefined) ? prepSec : 10;
+    if (elapsedSec < prepSec) {
+        return {
+            isDone: false,
+            isPrep: true,
+            isWork: false,
+            currentSet: 1,
+            targetSets: targetSets,
+            remInPhase: prepSec - elapsedSec,
+            phaseDuration: prepSec,
+            phaseKey: 'squat_prep',
+            phaseName: '⏳ 战前就位准备 (后背贴墙，大腿水平90°)'
+        };
+    }
 
+    var afterPrep = elapsedSec - prepSec;
+    var restSec = 60;
     var accum = 0;
     for (var k = 1; k <= targetSets; k++) {
-        var workEnd = accum + targetSec;
-        if (elapsedSec < workEnd) {
+        var wEnd = accum + targetSec;
+        if (afterPrep < wEnd) {
             return {
                 isDone: false,
+                isPrep: false,
                 isWork: true,
                 currentSet: k,
                 targetSets: targetSets,
-                remInPhase: workEnd - elapsedSec,
+                remInPhase: wEnd - afterPrep,
                 phaseDuration: targetSec,
-                phaseKey: 'squat_work_' + k
+                phaseKey: 'squat_work_' + k,
+                phaseName: '🦵 第 ' + k + ' / ' + targetSets + ' 组 · 等长收缩坚持中'
             };
         }
-        accum = workEnd;
+        accum = wEnd;
 
         if (k < targetSets) {
-            var restEnd = accum + restSec;
-            if (elapsedSec < restEnd) {
+            var rEnd = accum + restSec;
+            if (afterPrep < rEnd) {
                 return {
                     isDone: false,
+                    isPrep: false,
                     isWork: false,
                     currentSet: k,
                     targetSets: targetSets,
-                    remInPhase: restEnd - elapsedSec,
+                    remInPhase: rEnd - afterPrep,
                     phaseDuration: restSec,
-                    phaseKey: 'squat_rest_' + k
+                    phaseKey: 'squat_rest_' + k,
+                    phaseName: '☕ 组间休整中 · 慢走抖腿 (还剩 ' + (rEnd - afterPrep) + 's)'
                 };
             }
-            accum = restEnd;
+            accum = rEnd;
         }
     }
-    return { isDone: true, totalScheduleSec: totalScheduleSec };
+    return { isDone: true, totalScheduleSec: accum + prepSec };
 }
 
 window.setSquatMode = function (mode) {
@@ -595,7 +659,7 @@ function startSquatWorkout() {
 
     var sec = item.targetSeconds || 60;
     var sets = item.targetSets || 3;
-    speakFast('开始靠墙静蹲，共' + sets + '组，每组' + sec + '秒，组间休息1分钟。听令而动！');
+    speakFast('战前就位，共' + sets + '组，每组' + sec + '秒，10秒就位准备！');
 }
 
 function stopSquatWorkout(isAuto) {
@@ -642,7 +706,7 @@ function stopSquatWorkout(isAuto) {
         }
     }
 
-    item.note = '靠墙静蹲做功' + loadNote + '：完成 ' + sets + ' 组 × ' + sec + ' 秒（组间休60s），等长收缩做功 ' + item.total + ' 秒。';
+    item.note = '靠墙静蹲做功' + loadNote + '：完成 ' + sets + ' 组 × ' + sec + ' 秒，等长收缩做功 ' + item.total + ' 秒。';
 
     if (typeof autoCommitLogEntry === 'function') {
         autoCommitLogEntry(item);
@@ -655,7 +719,7 @@ function stopSquatWorkout(isAuto) {
     if (typeof renderAll === 'function') renderAll();
 
     if (isAuto) {
-        speakFast('恭喜！靠墙静蹲' + sets + '组全部圆满收功，战功已自动封存入册！');
+        speakFast('恭喜！靠墙静蹲' + sets + '组圆满收功，战功已自动封存入册！');
         showToast('🎉 靠墙静蹲（' + sets + '组·' + item.total + 's）已自动封存！');
     } else {
         speakFast('靠墙静蹲收功，已成功入册！');
@@ -665,6 +729,7 @@ function stopSquatWorkout(isAuto) {
 
 // ----------------------------------------------------------------
 // 3. 墙角扩胸控制面板 (左右交替等长拉伸)
+// ★ 配备 10s 就位提前量；做功、换边、休整每一秒均清晰读秒！
 // ----------------------------------------------------------------
 function renderChestDeckPanel() {
     var container = document.getElementById('chestDeckContainer');
@@ -699,22 +764,21 @@ function renderChestDeckPanel() {
     }
 
     if (!item.targetSeconds) item.targetSeconds = 30;
-    if (!item.targetSets) item.targetSets = 3;
+    if (!item.sets) item.sets = 3;
     if (!item.restSeconds) item.restSeconds = 15;
 
     var isRunning = (item.status === 'running');
+    var prepSec = 10;
     var timerDisplay = '00:30';
-    var phaseTitle = '🎯 计划 ' + item.sets + ' 组 (单侧 ' + item.targetSeconds + 's · 间歇 ' + item.restSeconds + 's)';
+    var phaseTitle = '🎯 计划 ' + item.sets + ' 组 (单侧 ' + item.targetSeconds + 's · 间歇 ' + item.restSeconds + 's · 留10s准备)';
 
     if (isRunning && item.startTime) {
         var elapsed = Math.floor((Date.now() - new Date(item.startTime).getTime()) / 1000);
-        var info = getChestSchedulePhase(item.targetSeconds, item.sets, item.restSeconds, elapsed);
+        var info = getChestSchedulePhase(item.targetSeconds, item.sets, item.restSeconds, prepSec, elapsed);
         var mm = String(Math.floor(info.remInPhase / 60)).padStart(2, '0');
         var ss = String(info.remInPhase % 60).padStart(2, '0');
         timerDisplay = mm + ':' + ss;
-        phaseTitle = info.isWork
-            ? '👐 第 ' + info.currentSet + ' / ' + info.targetSets + ' 组 · ' + info.side + '拉伸做功中'
-            : '☕ 换边休整中 · 甩动手臂放松 (还剩 ' + info.remInPhase + 's)';
+        phaseTitle = info.phaseName;
     } else {
         var initM = String(Math.floor(item.targetSeconds / 60)).padStart(2, '0');
         var initS = String(item.targetSeconds % 60).padStart(2, '0');
@@ -723,7 +787,7 @@ function renderChestDeckPanel() {
 
     var mainActionBtnHtml = isRunning
         ? '<button class="btn btn-danger hero-main-action-btn" onclick="stopChestWorkout(false)">⏹️ 提前收功并封存</button>'
-        : '<button class="btn btn-success hero-main-action-btn" onclick="startChestWorkout()">▶️ 开始墙角扩胸</button>';
+        : '<button class="btn btn-success hero-main-action-btn" onclick="startChestWorkout()">▶️ 开始墙角扩胸 (留10s站位就绪)</button>';
 
     var configPanelHtml = '';
     if (!isRunning) {
@@ -740,7 +804,7 @@ function renderChestDeckPanel() {
         configPanelHtml =
             '<div class="squat-load-panel">' +
                 '<div class="squat-load-header">' +
-                    '<span class="squat-load-title">⚖️ 扩胸参数配置 (左右交替)</span>' +
+                    '<span class="squat-load-title">⚖️ 扩胸参数配置 (左右交替，手肘抵墙扩胸)</span>' +
                 '</div>' +
                 '<div style="border-top:1px dashed rgba(255,255,255,0.1); padding-top:6px; margin-top:6px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">' +
                     '<div style="display:flex; align-items:center; gap:4px;">' +
@@ -775,7 +839,7 @@ function renderChestDeckPanel() {
             if (!el || !item.startTime) return;
 
             var elaps = Math.floor((Date.now() - new Date(item.startTime).getTime()) / 1000);
-            var inf = getChestSchedulePhase(item.targetSeconds, item.sets, item.restSeconds, elaps);
+            var inf = getChestSchedulePhase(item.targetSeconds, item.sets, item.restSeconds, prepSec, elaps);
 
             if (inf.isDone) {
                 clearInterval(chestTimerInterval);
@@ -785,23 +849,30 @@ function renderChestDeckPanel() {
                 return;
             }
 
+            // 阶段切换提示
             if (!quickActionSpokenCues.has(inf.phaseKey)) {
                 quickActionSpokenCues.add(inf.phaseKey);
-                if (inf.isWork) {
-                    speakFast('第' + inf.currentSet + '组，' + inf.side + '墙角扩胸开始，拉伸胸大肌，坚持' + item.targetSeconds + '秒！');
+                if (inf.isPrep) {
+                    speakFast('墙角就位，曲肘抵墙，10秒就绪！');
+                } else if (inf.isWork) {
+                    speakFast('第' + inf.currentSet + '组，' + inf.side + '扩胸开始，挺胸拉伸！');
                 } else {
-                    speakFast('完成！休息' + item.restSeconds + '秒，甩动手臂放松。');
+                    speakFast('完成！' + inf.side + '，甩臂放松。');
                 }
             }
 
-            if (!inf.isWork && inf.remInPhase === 5 && !quickActionSpokenCues.has('chest_warn_rest_' + inf.phaseKey)) {
-                quickActionSpokenCues.add('chest_warn_rest_' + inf.phaseKey);
-                speakFast('还有5秒，准备换边就位！');
-            }
-
-            if (inf.isWork && inf.remInPhase <= 3 && inf.remInPhase > 0 && !quickActionSpokenCues.has('chest_count_' + inf.phaseKey + '_' + inf.remInPhase)) {
-                quickActionSpokenCues.add('chest_count_' + inf.phaseKey + '_' + inf.remInPhase);
+            // ★ 每一秒都读秒！彻底满足用户诉求
+            if (inf.isPrep) {
                 speakFast(String(inf.remInPhase));
+            } else if (inf.isWork) {
+                speakFast(String(inf.remInPhase));
+            } else {
+                // 换边/组间休整每秒倒数读秒
+                if (inf.remInPhase <= 5 && inf.remInPhase > 0) {
+                    speakFast(String(inf.remInPhase));
+                } else if (inf.remInPhase > 5) {
+                    speakFast(String(inf.remInPhase));
+                }
             }
 
             var mm = String(Math.floor(inf.remInPhase / 60)).padStart(2, '0');
@@ -809,40 +880,111 @@ function renderChestDeckPanel() {
             el.textContent = mm + ':' + ss;
 
             if (subEl) {
-                subEl.innerHTML = inf.isWork
-                    ? '<span style="color:var(--purple-accent); font-weight:bold;">👐 第 ' + inf.currentSet + ' / ' + inf.targetSets + ' 组 · ' + inf.side + '拉伸做功中</span>'
-                    : '<span style="color:var(--amber-accent); font-weight:bold;">☕ 换边休整中 · 甩动手臂放松 (还剩 ' + inf.remInPhase + 's)</span>';
+                subEl.innerHTML = inf.isPrep
+                    ? '<span style="color:var(--amber-accent); font-weight:bold;">⏳ 站位就绪中 · 还有 ' + inf.remInPhase + 's 开练</span>'
+                    : (inf.isWork
+                        ? '<span style="color:var(--purple-accent); font-weight:bold;">👐 第 ' + inf.currentSet + ' / ' + inf.targetSets + ' 组 · ' + inf.side + '拉伸做功中</span>'
+                        : '<span style="color:var(--amber-accent); font-weight:bold;">☕ ' + inf.side + '中 · 甩臂放松 (剩余 ' + inf.remInPhase + 's)</span>');
             }
         }, 1000);
     }
 }
 
-function getChestSchedulePhase(targetSec, targetSets, restSec, elapsedSec) {
-    var totalPhases = targetSets * 2;
+function getChestSchedulePhase(targetSec, targetSets, restSec, prepSec, elapsedSec) {
+    prepSec = (prepSec !== undefined) ? prepSec : 10;
+    if (elapsedSec < prepSec) {
+        return {
+            isDone: false,
+            isPrep: true,
+            isWork: false,
+            phaseKey: 'chest_prep',
+            phaseName: '⏳ 战前就位准备 (曲肘抵墙，步入墙角)',
+            remInPhase: prepSec - elapsedSec,
+            phaseDuration: prepSec,
+            currentSet: 1,
+            targetSets: targetSets,
+            side: '就位'
+        };
+    }
+
+    var afterPrepElapsed = elapsedSec - prepSec;
     var accum = 0;
-    for (var i = 1; i <= totalPhases; i++) {
-        var isLeft = (i % 2 !== 0);
-        var currentSet = Math.ceil(i / 2);
-        var workEnd = accum + targetSec;
-        if (elapsedSec < workEnd) {
+    for (var k = 1; k <= targetSets; k++) {
+        // 1. 左臂做功
+        var wlEnd = accum + targetSec;
+        if (afterPrepElapsed < wlEnd) {
             return {
-                isDone: false, isWork: true, isLeft: isLeft, side: isLeft ? '左臂' : '右臂', currentSet: currentSet, targetSets: targetSets,
-                remInPhase: workEnd - elapsedSec, phaseDuration: targetSec, phaseKey: 'chest_work_' + i
+                isDone: false,
+                isPrep: false,
+                isWork: true,
+                phaseKey: 'chest_wl_' + k,
+                phaseName: '👐 第 ' + k + ' / ' + targetSets + ' 组 · 左臂扩胸做功中',
+                remInPhase: wlEnd - afterPrepElapsed,
+                phaseDuration: targetSec,
+                currentSet: k,
+                targetSets: targetSets,
+                side: '左臂'
             };
         }
-        accum = workEnd;
-        if (i < totalPhases) {
-            var restEnd = accum + restSec;
-            if (elapsedSec < restEnd) {
+        accum = wlEnd;
+
+        // 2. 换右臂休整
+        var rsEnd = accum + restSec;
+        if (afterPrepElapsed < rsEnd) {
+            return {
+                isDone: false,
+                isPrep: false,
+                isWork: false,
+                phaseKey: 'chest_rs_' + k,
+                phaseName: '☕ 换右臂休整中 (还剩 ' + (rsEnd - afterPrepElapsed) + 's)',
+                remInPhase: rsEnd - afterPrepElapsed,
+                phaseDuration: restSec,
+                currentSet: k,
+                targetSets: targetSets,
+                side: '换右臂休整'
+            };
+        }
+        accum = rsEnd;
+
+        // 3. 右臂做功
+        var wrEnd = accum + targetSec;
+        if (afterPrepElapsed < wrEnd) {
+            return {
+                isDone: false,
+                isPrep: false,
+                isWork: true,
+                phaseKey: 'chest_wr_' + k,
+                phaseName: '👐 第 ' + k + ' / ' + targetSets + ' 组 · 右臂扩胸做功中',
+                remInPhase: wrEnd - afterPrepElapsed,
+                phaseDuration: targetSec,
+                currentSet: k,
+                targetSets: targetSets,
+                side: '右臂'
+            };
+        }
+        accum = wrEnd;
+
+        // 4. 组间休整（非末组）
+        if (k < targetSets) {
+            var rsetEnd = accum + restSec;
+            if (afterPrepElapsed < rsetEnd) {
                 return {
-                    isDone: false, isWork: false, isLeft: isLeft, side: '休整', currentSet: currentSet, targetSets: targetSets,
-                    remInPhase: restEnd - elapsedSec, phaseDuration: restSec, phaseKey: 'chest_rest_' + i
+                    isDone: false,
+                    isPrep: false,
+                    isWork: false,
+                    phaseKey: 'chest_rset_' + k,
+                    phaseName: '☕ 第 ' + k + ' 组完成 · 组间休整中 (还剩 ' + (rsetEnd - afterPrepElapsed) + 's)',
+                    remInPhase: rsetEnd - afterPrepElapsed,
+                    phaseDuration: restSec,
+                    currentSet: k,
+                    targetSets: targetSets,
+                    side: '组间休整'
                 };
             }
-            accum = restEnd;
+            accum = rsetEnd;
         }
     }
-    return { isDone: true, totalScheduleSec: accum };
+    return { isDone: true, totalScheduleSec: accum + prepSec };
 }
 
 window.setChestSeconds = function (sec) {
@@ -865,7 +1007,6 @@ window.setChestSets = function (sets) {
     });
     if (item && item.status !== 'running') {
         item.sets = parseInt(sets) || 3;
-        item.targetSets = item.sets;
         item.total = (item.targetSeconds || 30) * item.sets * 2;
         data.settings.chestDefaultSets = item.sets;
         saveData();
@@ -890,7 +1031,7 @@ function startChestWorkout() {
 
     var sec = item.targetSeconds || 30;
     var sets = item.sets || 3;
-    speakFast('开始墙角扩胸，左右交替，共' + sets + '组，单侧' + sec + '秒，间歇15秒。听令而动！');
+    speakFast('墙角扩胸，左右交替' + sets + '组，单侧' + sec + '秒，10秒就位准备！');
 }
 
 function stopChestWorkout(isAuto) {
@@ -920,7 +1061,7 @@ function stopChestWorkout(isAuto) {
         item.durationMin = Math.max(1, Math.round((item.total + (sets * 2 - 1) * item.restSeconds) / 60));
     }
 
-    item.note = '墙角扩胸：左右交替完成 ' + sets + ' 组，每侧 ' + sec + ' 秒，等长拉伸总时长 ' + item.total + ' 秒。';
+    item.note = '墙角扩胸：左右交替完成 ' + sets + ' 组，每侧 ' + sec + ' 秒，等长拉伸做功总时长 ' + item.total + ' 秒。';
 
     if (typeof autoCommitLogEntry === 'function') {
         autoCommitLogEntry(item);
@@ -933,7 +1074,7 @@ function stopChestWorkout(isAuto) {
     if (typeof renderAll === 'function') renderAll();
 
     if (isAuto) {
-        speakFast('恭喜！墙角扩胸全部圆满收功，战功已自动封存入册！');
+        speakFast('恭喜！墙角扩胸圆满收功，战功已自动封存入册！');
         showToast('🎉 墙角扩胸（' + sets + '组·' + item.total + 's）已自动封存！');
     } else {
         speakFast('墙角扩胸收功，已成功入册！');

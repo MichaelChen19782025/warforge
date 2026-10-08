@@ -1,8 +1,10 @@
 // ================================================================
 //  pnf-timer.js: 压腿舒筋战钟
-//  规则：左右脚各压一次 = 一轮 = 一组；可设组数；
-//        左右脚之间间隔默认10s，每组之间间隔默认20s；
-//        整个任务结束（或提前收功）才写入一条记录，记录含 组数/左右脚间隔/组间间隔。
+//  规则：
+//  1. 统一配备 10 秒战前就位提前量，避免一按开始来不及架腿；
+//  2. 倒计时、秒表、PNF周天全模式下每一秒都清晰读秒报号！
+//  3. 左右脚各压一次 = 一组，换边与组间休整也全程报秒；
+//  4. 任务结束自动入册。
 // ================================================================
 
 let stretchMode = 'countdown'; // 'countdown' | 'stopwatch' | 'pnf'
@@ -10,30 +12,30 @@ let stretchState = 'idle'; // 'idle' | 'running' | 'paused'
 let stretchSeconds = 60;      // 单侧目标/秒表读数
 let stretchTarget = 60;       // 单侧目标秒数
 let stretchSets = 2;          // 总组数
-let stretchSwapRestSec = 10;  // 左右脚之间的间隔（换边）
-let stretchSetRestSec = 20;   // 每组之间的间隔（组间）
+let stretchSwapRestSec = 10;  // 换边间隔
+let stretchSetRestSec = 20;   // 组间间隔
+let stretchPrepDuration = 10; // 战前就位提前量 (10s)
 let stretchInterval = null;
 
-// 分组循环状态（倒计时 / PNF 通用）
+// 分组循环状态
 let stretchCycleSet = 1;       // 当前进行到第几组
-let stretchPhase = 'left';     // 'left' | 'swap' | 'right' | 'setrest'
+let stretchPhase = 'prep';     // 'prep' | 'left' | 'swap' | 'right' | 'setrest'
 let stretchPhaseRemaining = 0;
 let stretchPhaseTotal = 0;
-let stretchSetsCompleted = 0;  // 已完整完成的组数
-let stretchSessionStart = 0;   // 本次任务起始毫秒时间戳
+let stretchSetsCompleted = 0;  // 已完整完成组数
+let stretchSessionStart = 0;   // 起始时间戳
 
 // PNF 专用流状态
 let pnfSteps = [];
 let pnfStepIndex = 0;
 
-// 本地稳定语音播报函数（杜绝外部未定义引发的代码崩溃）
 function speakFast(text) {
     if (!('speechSynthesis' in window)) return;
     try {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
         u.lang = 'zh-CN';
-        u.rate = 1.35;
+        u.rate = 1.38;
         u.pitch = 1.05;
         window.speechSynthesis.speak(u);
     } catch (e) {
@@ -58,6 +60,9 @@ function initStretchPreferences() {
         if (s.stretchSetRestSec !== undefined) {
             stretchSetRestSec = Math.max(5, parseInt(s.stretchSetRestSec) || 20);
         }
+        if (s.stretchPrepDuration !== undefined) {
+            stretchPrepDuration = Math.max(3, parseInt(s.stretchPrepDuration) || 10);
+        }
     }
 }
 
@@ -67,10 +72,9 @@ function formatStretchTime(sec) {
     return m + ':' + s;
 }
 
-// 计算某组数下整场任务的总时长（秒），用于展示
 function estimateStretchTotalSec(sets) {
     const n = Math.max(1, sets || 1);
-    return n * stretchTarget * 2 + n * stretchSwapRestSec + (n - 1) * stretchSetRestSec;
+    return stretchPrepDuration + n * stretchTarget * 2 + n * stretchSwapRestSec + (n - 1) * stretchSetRestSec;
 }
 
 window.switchStretchMode = function (mode) {
@@ -92,28 +96,27 @@ window.switchStretchMode = function (mode) {
     if (fill) fill.style.width = '0%';
 
     if (mode === 'countdown') {
-        stretchPhase = 'left';
+        stretchPhase = 'prep';
         stretchCycleSet = 1;
         stretchSeconds = stretchTarget;
         if (clock) clock.textContent = formatStretchTime(stretchTarget);
-        if (phase) phase.textContent = '目标倒计时 · 单侧 ' + stretchTarget + 's · 共 ' + stretchSets + ' 组';
-        if (counter) counter.textContent = '第 1 / ' + stretchSets + ' 组 · 左腿 (左右脚各压一次算一组)';
+        if (phase) phase.textContent = '目标倒计时 · 单侧 ' + stretchTarget + 's · 共 ' + stretchSets + ' 组 (留10s准备)';
+        if (counter) counter.textContent = '第 1 / ' + stretchSets + ' 组 · 左腿前置 (含10s提前量)';
         renderStretchCountdownSettings();
     } else if (mode === 'stopwatch') {
         stretchSeconds = 0;
         if (clock) clock.textContent = "00:00";
-        if (phase) phase.textContent = "正向秒表 · 自由舒缓压腿 (全程读秒)";
-        if (counter) counter.textContent = '正向计时无上限';
+        if (phase) phase.textContent = "正向秒表 · 留10s就位准备 (全程读秒)";
+        if (counter) counter.textContent = '秒表计时无上限';
         renderStretchStopwatchSettings();
     } else {
         if (clock) clock.textContent = formatStretchTime(stretchTarget);
-        if (phase) phase.textContent = "闭眼就位 · 听令而动";
-        if (counter) counter.textContent = '双腿PNF周天 · 共 ' + stretchSets + ' 组';
+        if (phase) phase.textContent = "双腿PNF周天 (留10s就位准备)";
+        if (counter) counter.textContent = '双腿PNF · 共 ' + stretchSets + ' 组';
         renderPnfSettings();
     }
 };
 
-// 数据载入/切换标签时刷新压腿参数与展示
 window.resetStretchDisplayUI = function () {
     if (stretchState !== 'idle') return;
     initStretchPreferences();
@@ -147,17 +150,35 @@ function startStretchTimer() {
     }
 
     if (stretchMode === 'stopwatch') {
-        speakFast("开始自由压腿，秒表启动！");
+        // 秒表模式也带 10s 就位提前量
+        stretchPhase = 'prep';
+        stretchPhaseTotal = stretchPhaseRemaining = stretchPrepDuration;
+        updateStretchPhaseUI(true);
         clearInterval(stretchInterval);
-        stretchInterval = setInterval(tickStopwatch, 1000);
+        stretchInterval = setInterval(function () {
+            if (stretchState !== 'running') return;
+            stretchPhaseRemaining--;
+            updateStretchPhaseUI(false);
+            if (stretchPhaseRemaining > 0) {
+                speakFast(String(stretchPhaseRemaining));
+            } else {
+                clearInterval(stretchInterval);
+                speakFast("开始自由压腿，秒表启动！");
+                stretchSeconds = 0;
+                stretchPhase = 'work';
+                const phaseEl = document.getElementById('stretchPhaseDisplay');
+                if (phaseEl) phaseEl.textContent = "自由秒表压腿中 (每秒读秒)";
+                stretchInterval = setInterval(tickStopwatch, 1000);
+            }
+        }, 1000);
         return;
     }
 
-    // 目标倒计时：进入分组循环
+    // 目标倒计时模式：从 10s 战前就位提前量开始
     stretchSessionStart = Date.now();
     stretchSetsCompleted = 0;
     stretchCycleSet = 1;
-    enterStretchPhase('left');
+    enterStretchPhase('prep');
     clearInterval(stretchInterval);
     stretchInterval = setInterval(tickCountdownPhase, 1000);
 }
@@ -177,16 +198,21 @@ function resumeStretchTimer() {
     if (stretchMode === 'pnf') {
         resumePnfStep();
     } else if (stretchMode === 'stopwatch') {
-        stretchInterval = setInterval(tickStopwatch, 1000);
+        if (stretchPhase === 'prep') {
+            startStretchTimer();
+        } else {
+            stretchInterval = setInterval(tickStopwatch, 1000);
+        }
     } else {
         stretchInterval = setInterval(tickCountdownPhase, 1000);
     }
 }
 
-// 进入倒计时的某个阶段
 function enterStretchPhase(phase) {
     stretchPhase = phase;
-    if (phase === 'left' || phase === 'right') {
+    if (phase === 'prep') {
+        stretchPhaseTotal = stretchPhaseRemaining = stretchPrepDuration;
+    } else if (phase === 'left' || phase === 'right') {
         stretchPhaseTotal = stretchPhaseRemaining = stretchTarget;
     } else if (phase === 'swap') {
         stretchPhaseTotal = stretchPhaseRemaining = stretchSwapRestSec;
@@ -210,17 +236,22 @@ function updateStretchPhaseUI(announce) {
     if (fill) fill.style.width = (stretchPhaseTotal ? (((stretchPhaseTotal - stretchPhaseRemaining) / stretchPhaseTotal) * 100) : 0) + '%';
 
     const setTag = '第 ' + stretchCycleSet + ' / ' + stretchSets + ' 组';
-    if (stretchPhase === 'left' || stretchPhase === 'right') {
-        if (phaseEl) phaseEl.textContent = setTag + ' · ' + stretchSideName(stretchPhase) + '压腿中';
-        if (counter) counter.textContent = setTag + ' · ' + stretchSideName(stretchPhase) + (stretchPhase === 'left' ? ' (左右脚各压一次算一组)' : '');
-        if (announce) speakFast(stretchSideName(stretchPhase) + '，' + stretchTarget + '秒，匀速吐气，拉长筋膜！');
+
+    if (stretchPhase === 'prep') {
+        if (phaseEl) phaseEl.textContent = '⏳ 战前就位准备 (双手扶稳，调整体位)';
+        if (counter) counter.textContent = '准备阶段 · 还有 ' + stretchPhaseRemaining + 's 开练';
+        if (announce) speakFast('战前就位，双手扶稳，10秒准备！');
+    } else if (stretchPhase === 'left' || stretchPhase === 'right') {
+        if (phaseEl) phaseEl.textContent = setTag + ' · ' + stretchSideName(stretchPhase) + '压腿中 (每秒读秒)';
+        if (counter) counter.textContent = setTag + ' · ' + stretchSideName(stretchPhase) + (stretchPhase === 'left' ? ' (单侧' + stretchTarget + 's)' : '');
+        if (announce) speakFast(stretchSideName(stretchPhase) + '压腿，' + stretchTarget + '秒，深长吐气！');
     } else if (stretchPhase === 'swap') {
-        if (phaseEl) phaseEl.textContent = setTag + ' · 左右脚间隔休整';
+        if (phaseEl) phaseEl.textContent = setTag + ' · 左右脚换边休整 (还剩' + stretchPhaseRemaining + 's)';
         if (counter) counter.textContent = setTag + ' · 缓慢收腿换边 (' + stretchSwapRestSec + '秒)';
         if (announce) speakFast('换另一条腿，' + stretchSwapRestSec + '秒间隔，抖腿放松。');
     } else {
-        if (phaseEl) phaseEl.textContent = '组间休整 · 下一组即将开始';
-        if (counter) counter.textContent = '已完成 ' + stretchSetsCompleted + ' / ' + stretchSets + ' 组 · 组间间隔 (' + stretchSetRestSec + '秒)';
+        if (phaseEl) phaseEl.textContent = '组间休整 · 下一组即将开始 (还剩' + stretchPhaseRemaining + 's)';
+        if (counter) counter.textContent = '已完成 ' + stretchSetsCompleted + ' / ' + stretchSets + ' 组 · 组间休整 (' + stretchSetRestSec + '秒)';
         if (announce) speakFast('这一组完成，组间休息' + stretchSetRestSec + '秒。');
     }
 }
@@ -230,12 +261,9 @@ function tickCountdownPhase() {
     stretchPhaseRemaining--;
     updateStretchPhaseUI(false);
 
+    // ★ 每一秒都清晰读秒报号！
     if (stretchPhaseRemaining > 0) {
-        if ((stretchPhase === 'left' || stretchPhase === 'right') && stretchPhaseRemaining === 10) {
-            speakFast('10秒，最后10秒，微沉加深！');
-        } else {
-            speakFast(String(stretchPhaseRemaining));
-        }
+        speakFast(String(stretchPhaseRemaining));
     }
 
     if (stretchPhaseRemaining <= 0) {
@@ -244,7 +272,9 @@ function tickCountdownPhase() {
 }
 
 function advanceStretchPhase() {
-    if (stretchPhase === 'left') {
+    if (stretchPhase === 'prep') {
+        enterStretchPhase('left');
+    } else if (stretchPhase === 'left') {
         enterStretchPhase('swap');
     } else if (stretchPhase === 'swap') {
         enterStretchPhase('right');
@@ -311,7 +341,6 @@ window.stopStretchTimer = function (isAutoDone) {
     switchStretchMode(mode);
 };
 
-// 构造入库记录：含 组数 / 左右脚间隔 / 组间间隔
 function buildStretchEntry(doneSets, elapsedSec, isFull) {
     const duty = (typeof getDutyShiftInfo === 'function') ? getDutyShiftInfo() : { dutyDateStr: new Date().toISOString().slice(0, 10), shift: { name: '日常' } };
     const isStopwatch = stretchMode === 'stopwatch';
@@ -352,13 +381,12 @@ function updateStretchButtonUI(isRunning) {
     const btn = document.getElementById('stretchStartBtn');
     const pauseBtn = document.getElementById('stretchPauseBtn');
     if (btn) {
-        btn.innerText = isRunning ? "⏸ 暂停" : "▶ 开始压腿";
+        btn.innerText = isRunning ? "⏸ 暂停" : "▶ 开始压腿 (留10s准备)";
         btn.className = isRunning ? "btn btn-danger" : "btn btn-primary";
     }
     if (pauseBtn) pauseBtn.disabled = !isRunning;
 }
 
-// 设定单侧倒计时秒数并记忆为下一次默认值
 window.setStretchCountdownSec = function (sec) {
     const val = Math.max(10, parseInt(sec) || 60);
     stretchTarget = val;
@@ -372,7 +400,6 @@ window.setStretchCountdownSec = function (sec) {
     if (stretchState === 'idle') switchStretchMode(stretchMode);
 };
 
-// 设定组数并记忆
 window.setStretchSets = function (n) {
     const val = Math.max(1, Math.min(10, parseInt(n) || 2));
     stretchSets = val;
@@ -385,7 +412,6 @@ window.setStretchSets = function (n) {
     if (stretchState === 'idle') switchStretchMode(stretchMode);
 };
 
-// 设定左右脚之间的间隔并记忆
 window.setStretchSwapRestSec = function (sec) {
     const val = Math.max(5, parseInt(sec) || 10);
     stretchSwapRestSec = val;
@@ -397,7 +423,6 @@ window.setStretchSwapRestSec = function (sec) {
     renderStretchCountdownSettings();
 };
 
-// 设定每组之间的间隔并记忆
 window.setStretchSetRestSec = function (sec) {
     const val = Math.max(5, parseInt(sec) || 20);
     stretchSetRestSec = val;
@@ -460,7 +485,7 @@ function renderStretchCountdownSettings() {
                 chipRow('每组之间间隔 (自动记忆):', setRestPresets, stretchSetRestSec, 'setStretchSetRestSec', 'green-accent', 5, 180, 5) +
             '</div>' +
             '<div style="font-size:12px; color:var(--text-muted); text-align:center;">' +
-                '⏱ 预计全程 ' + formatStretchTime(estimateStretchTotalSec(stretchSets)) + '（单侧 ' + stretchTarget + 's × ' + stretchSets + '组 + 换边/组间间隔）' +
+                '⏱ 预计全程 ' + formatStretchTime(estimateStretchTotalSec(stretchSets)) + '（留10s准备 + 单侧 ' + stretchTarget + 's × ' + stretchSets + '组 + 换边/组间间隔）' +
             '</div>' +
         '</div>';
 }
@@ -470,7 +495,7 @@ function renderStretchStopwatchSettings() {
     if (!container) return;
     container.innerHTML =
         '<div style="text-align:center; font-size:13px; color:var(--text-muted); padding:8px 0;">' +
-            '秒表正向模式：全程每秒语音读秒，达到心满意足状态点击【⏹ 提前收功】即可自动封存！' +
+            '秒表正向模式：包含 10s 就位提前量，启动后全程每秒读秒，达到满意状态点击【⏹ 提前收功】自动封存！' +
         '</div>';
 }
 
@@ -501,12 +526,11 @@ function renderPnfSettings() {
                 chipRow('每组之间间隔 (自动记忆):', setRestPresets, stretchSetRestSec, 'setStretchSetRestSec', 'green-accent', 5, 180, 5) +
             '</div>' +
             '<div style="font-size:12px; color:var(--text-muted); line-height:1.5; text-align:center;">' +
-                '💡 <strong>闭眼听令口诀</strong>：初阶牵拉 ➔ 听到"发力"脚跟下踩对抗(不憋气) ➔ 听到"下沉"彻底卸力加深 ➔ 换边休整。' +
+                '💡 <strong>闭眼听令口诀</strong>：初阶牵拉 ➔ 听到"发力"脚跟下踩对抗(吐气不憋气) ➔ 听到"下沉"彻底卸力加深 ➔ 全程读秒。' +
             '</div>' +
         '</div>';
 }
 
-// ================= PNF 周天（按组循环） =================
 const PNF_LEG_STAGES = [
     { suffix: '初阶到位牵拉', cue: '初阶轻柔牵拉，深长吐气', duration: 15 },
     { suffix: '等长发力对抗', cue: '脚跟下踩发力对抗，严禁憋气，吐气！', duration: 7 },
@@ -523,6 +547,15 @@ function buildPnfSteps() {
     });
 
     const steps = [];
+    // 加入 10s 就位提前量
+    steps.push({
+        title: '战前就位准备 (10秒缓冲)',
+        cue: 'PNF极意战前就位，双手扶稳，10秒就绪！',
+        duration: stretchPrepDuration,
+        set: 1,
+        side: 'prep'
+    });
+
     for (let s = 1; s <= stretchSets; s++) {
         leftStages.forEach(function (st) {
             steps.push({ title: '第 ' + s + '/' + stretchSets + ' 组 · ' + st.suffix, cue: st.cue, duration: st.duration, set: s, side: st.key });
@@ -556,7 +589,6 @@ function startPnfFlow() {
 
 function resumePnfStep() {
     if (pnfStepIndex >= pnfSteps.length) return;
-    // 恢复时重建当前步骤计时（不重新语音喊话）
     const step = pnfSteps[pnfStepIndex];
     if (!step) return;
     clearInterval(stretchInterval);

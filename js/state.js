@@ -5,24 +5,23 @@
 const STORAGE_KEY = 'cyber_marshal_warforge_v9_ultimate';
 let currentFontSize = 15;
 
-// 动作法门武器库全面收录 (新增墙角扩胸)
 const DEFAULT_ARSENAL_TEMPLATE = [
-    { id: 'act_jog_glyco', name: '慢跑', type: 'aerobic', defaultSets: 1, defaultReps: '25min', total: 25,
-        downSec: 0, upSec: 0, icon: '🏃', tip: '餐后巡航消糖，清空肌糖原与肝糖原' },
     { id: 'act_squat_wall', name: '静蹲', type: 'isometric', defaultSets: 3, defaultReps: '60s',
-        total: 180, downSec: 0, upSec: 0, icon: '🧱', tip: '靠墙大腿水平90°，股四头肌强力汲糖，支持自重/单双负重' },
+        total: 180, downSec: 0, upSec: 0, icon: '🧱', tip: '10s就位提前量，做功每秒读秒，股四头肌强力汲糖，支持自重/单双负重' },
     { id: 'act_chest_stretch', name: '墙角扩胸', type: 'isometric', defaultSets: 3, defaultReps: '30s', total: 180,
-        downSec: 0, upSec: 0, icon: '👐', tip: '左右交替扩胸拉伸，默认3组，每边30s，中间休15s，改善圆肩' },
+        downSec: 0, upSec: 0, icon: '👐', tip: '10s就位提前量，做功与换边每秒读秒，左右交替改善圆肩驼背' },
+    { id: 'act_jog_glyco', name: '慢跑', type: 'aerobic', defaultSets: 1, defaultReps: '25min', total: 25,
+        downSec: 0, upSec: 0, icon: '🏃', tip: '10s起跑提前量，餐后巡航消糖，清空肌糖原与肝糖原' },
     { id: 'act_hang', name: '极限悬挂', type: 'isometric', defaultSets: 1, defaultReps: '40s', total: 40,
-        downSec: 0, upSec: 0, icon: '🧗', tip: '单杠死磕，极限抗阻握力与肩袖微循环(默认10阶延时校准补偿)' },
+        downSec: 0, upSec: 0, icon: '🧗', tip: '10s就位提前量，单杠死磕，极限抗阻握力与肩袖微循环(自带10阶延时校准补偿)' },
     { id: 'act_pushup_ecc', name: '离心俯卧', type: 'strength', defaultSets: 2, defaultReps: '10,10', total: 20,
-        downSec: 4.0, upSec: 1.0, icon: '🔥', tip: '4s慢速离心下放/1s起，TUT破糖主力，默认10次/组' },
+        downSec: 4.0, upSec: 1.0, icon: '🔥', tip: '10s战前就位，4s慢速离心下放/1s起，TUT破糖主力，默认10次/组' },
     { id: 'act_pullup', name: '标准引体', type: 'strength', defaultSets: 2, defaultReps: '8次', total: 16,
         downSec: 0, upSec: 0, icon: '🦇', tip: '标准正握/对握引体向上，背阔肌中下部做功' },
     { id: 'act_pullup_wide', name: '阔引体', type: 'strength', defaultSets: 2, defaultReps: '6次', total: 12,
         downSec: 0, upSec: 0, icon: '🦅', tip: '宽握展开，重点强化大圆肌与背阔肌上外侧V字倒三角' },
     { id: 'act_pnf_stretch', name: '压腿', type: 'isometric', defaultSets: 2, defaultReps: '60s',
-        total: 120, downSec: 0, upSec: 0, icon: '🧘', tip: '舒筋活络，全程每秒读秒，改善下肢微循环' },
+        total: 120, downSec: 0, upSec: 0, icon: '🧘', tip: '10s就位提前量，舒筋活络，做功与换边全程每秒读秒，改善下肢微循环' },
     { id: 'act_squat_free', name: '深蹲', type: 'strength', defaultSets: 3, defaultReps: '30,30,30', total: 90,
         downSec: 2.0, upSec: 1.0, icon: '🦵', tip: '大肌群做功泵血，刺激微循环' },
     { id: 'act_badminton', name: '羽毛球', type: 'aerobic', defaultSets: 1, defaultReps: '30min', total: 30,
@@ -48,12 +47,18 @@ var data = {
         shiftAnchorDate: '2026-09-01',
         shiftAnchorType: 0,
         shiftOverride: null,
-        // 悬挂相关：默认极限悬挂
+        // 各法门战前就位提前量配置 (秒)
+        prepDefaultDuration: 10,
+        jogPrepSec: 10,
+        squatPrepSec: 10,
+        chestPrepSec: 10,
+        stretchPrepDuration: 10,
+        // 悬挂配置
         hangDefaultVariant: 'hang',
         hangBestRecord: 0,
         hangPrepDuration: 10,
         hangCountdownTarget: 30,
-        // 靠墙静蹲专属负重配置
+        // 靠墙静蹲配置
         squatDefaultMode: 'bodyweight', 
         squatSingleWeight: 10.0,
         squatLeftWeight: 5.0,
@@ -156,7 +161,6 @@ function getArsenalList() {
             localAct.type = latestAct.type;
         }
     });
-    // 确保墙角扩胸被加入到老用户的库中
     if (!data.arsenal.find(a => a.id === 'act_chest_stretch')) {
         const chestAct = DEFAULT_ARSENAL_TEMPLATE.find(a => a.id === 'act_chest_stretch');
         data.arsenal.push(JSON.parse(JSON.stringify(chestAct)));

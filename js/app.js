@@ -75,12 +75,19 @@ async function init() {
                 data.diaries = parsed.diaries || [];
                 data.arsenal = parsed.arsenal || null;
 
+                // 提前量默认值自愈
+                if (data.settings.prepDefaultDuration === undefined) data.settings.prepDefaultDuration = 10;
+                if (data.settings.jogPrepSec === undefined) data.settings.jogPrepSec = 10;
+                if (data.settings.squatPrepSec === undefined) data.settings.squatPrepSec = 10;
+                if (data.settings.chestPrepSec === undefined) data.settings.chestPrepSec = 10;
+                if (data.settings.stretchPrepDuration === undefined) data.settings.stretchPrepDuration = 10;
+
                 // 墙角扩胸自愈
                 if (data.settings.chestDefaultSets === undefined) data.settings.chestDefaultSets = 3;
                 if (data.settings.chestDefaultSec === undefined) data.settings.chestDefaultSec = 30;
                 if (data.settings.chestRestSec === undefined) data.settings.chestRestSec = 15;
 
-                // 数据自愈升级：平滑规范化离心与压腿参数
+                // 规范化离心与压腿参数
                 if (data.settings.eccentricDefaultReps === undefined || data.settings.eccentricDefaultReps === 8) {
                     data.settings.eccentricDefaultReps = 10;
                 }
@@ -101,7 +108,7 @@ async function init() {
                     data.settings.stretchSetRestSec = 20;
                 }
 
-                // 悬挂自愈：默认引体变式锁定为极限静态悬挂
+                // 悬挂自愈
                 if (!data.settings.hangDefaultVariant) {
                     data.settings.hangDefaultVariant = 'hang';
                 }
@@ -129,7 +136,6 @@ async function init() {
             }
         }
 
-        // 清理旧空行
         if (typeof migrateBlankLinesInData === 'function') migrateBlankLinesInData();
 
         saveData();
@@ -138,7 +144,7 @@ async function init() {
         // 顶栏标签构建
         if (typeof renderTopTabs === 'function') renderTopTabs();
 
-        // 移动端字号初始化：默认注入大字号 (+4)，远距离与手机视认极佳
+        // 移动端字号初始化：默认注入大字号 (+4)
         const savedDelta = localStorage.getItem('user_font_delta_pref');
         if (typeof applyFontDelta === 'function') {
             applyFontDelta(savedDelta !== null ? parseFloat(savedDelta) : 4);
@@ -153,12 +159,11 @@ async function init() {
         // 默认进入靠墙静蹲战位
         switchTab('squat_deck');
 
-        // 压腿与悬挂参数同步
         if (typeof resetStretchDisplayUI === 'function') resetStretchDisplayUI();
         if (typeof switchHangVariant === 'function') switchHangVariant(data.settings.hangDefaultVariant || 'hang');
 
     } catch (err) {
-        console.error('App 初始化严重故障:', err);
+        console.error('App 初始化故障:', err);
     }
 }
 
