@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>天罡洗髓·焚糖战阙 // CYBER-MARSHAL GLYCO-WARFORGE PRO</title>
-    <!-- 内嵌 Favicon 消除控制台 404 报警 -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -49,22 +48,22 @@
         <main>
             <div class="left-deck" id="leftDeckPane">
 
-                <!-- 1. 靠墙静蹲战位（10s提前量 + 每秒读秒 + 徒手/单重/双重） -->
+                <!-- 1. 靠墙静蹲战位（参数自由改自记 + 每秒读秒 + 徒手/单重/双重） -->
                 <div id="squat_deck" class="tab-content">
                     <div id="squatDeckContainer"></div>
                 </div>
 
-                <!-- 2. 墙角扩胸（10s提前量 + 做功换边全程每秒读秒） -->
+                <!-- 2. 墙角扩胸（参数自由改自记 + 做功换边全程每秒读秒） -->
                 <div id="chest_deck" class="tab-content">
                     <div id="chestDeckContainer"></div>
                 </div>
 
-                <!-- 3. 慢跑巡航面板（10s提前量） -->
+                <!-- 3. 慢跑巡航面板（时长与提前量自记） -->
                 <div id="action_quick" class="tab-content">
                     <div id="actionQuickContainer"></div>
                 </div>
 
-                <!-- 4. 极限悬挂战钟（10s提前量 + 每秒读秒 + 10阶延时校准补偿） -->
+                <!-- 4. 极限悬挂战钟（提前量自记 + 每秒读秒 + 10阶延时校准补偿） -->
                 <div id="hang_timer" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--cyan-accent);">
                         <div class="card-header">
@@ -85,13 +84,22 @@
                             </div>
                         </div>
 
+                        <!-- 战前就位提前量调节 -->
+                        <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin:4px 0 6px;" id="hangPrepPresets">
+                            <span style="font-size:11px; color:var(--text-muted);">就位准备(自动记忆):</span>
+                            <button type="button" class="preset-chip" onclick="setHangPrepDuration(5)">5秒</button>
+                            <button type="button" class="preset-chip active" onclick="setHangPrepDuration(10)">10秒</button>
+                            <button type="button" class="preset-chip" onclick="setHangPrepDuration(15)">15秒</button>
+                            <input type="number" id="hangPrepInput" value="10" min="3" max="60" style="width:50px; text-align:center; font-size:11px; color:var(--amber-accent);" onchange="setHangPrepDuration(this.value)">
+                        </div>
+
                         <!-- 次数直录视窗 -->
                         <div id="hangRepsContainer" class="hidden" style="text-align:center; padding:12px 0;">
                             <label style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">本次有效完成次数：</label>
                             <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:12px;">
                                 <button class="btn btn-outline" style="font-size:20px; width:44px; height:44px;" onclick="stepHangReps(-1)">-</button>
                                 <input type="number" id="hangRepsInput" value="8" min="1" max="100"
-                                       style="width:90px; font-size:2.4rem; text-align:center; font-weight:bold; color:var(--cyan-accent); height:54px;">
+                                       style="width:90px; font-size:2.4rem; text-align:center; font-weight:bold; color:var(--cyan-accent); height:54px;" onchange="setQuickHangReps(this.value)">
                                 <button class="btn btn-outline" style="font-size:20px; width:44px; height:44px;" onclick="stepHangReps(1)">+</button>
                             </div>
                             <div class="param-chips" style="justify-content:center; margin-bottom:14px;">
@@ -137,11 +145,11 @@
                     </div>
                 </div>
 
-                <!-- 5. 离心慢放战钟（10s提前量 + 提前250ms盲听报号） -->
+                <!-- 5. 离心慢放战钟（全参数开放自记 + 提前250ms盲听报号） -->
                 <div id="timer" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--green-accent);">
                         <div class="card-header">
-                            <span>⏱️ 离心慢放·破糖战钟 (盲听报号)</span>
+                            <span>⏱️ 离心慢放·破糖战钟 (参数修改自动记忆)</span>
                             <span class="badge badge-green" id="timerStatus">就绪</span>
                         </div>
 
@@ -154,7 +162,7 @@
 
                         <div class="mobile-param-box">
                             <div class="param-row">
-                                <span class="param-label">设定组数:</span>
+                                <span class="param-label">设定组数(自记):</span>
                                 <div class="param-chips">
                                     <button type="button" class="preset-chip active" id="chipSet2" onclick="setEccentricQuickSets(2)">2组</button>
                                     <button type="button" class="preset-chip" id="chipSet3" onclick="setEccentricQuickSets(3)">3组</button>
@@ -169,7 +177,7 @@
                             </div>
 
                             <div class="param-row">
-                                <span class="param-label" style="color:var(--cyan-accent);">每组次数:</span>
+                                <span class="param-label" style="color:var(--cyan-accent);">每组次数(自记):</span>
                                 <div class="param-chips">
                                     <button type="button" class="preset-chip" id="chipEccRep6" onclick="setEccentricQuickReps(6)">6次</button>
                                     <button type="button" class="preset-chip" id="chipEccRep8" onclick="setEccentricQuickReps(8)">8次</button>
@@ -203,12 +211,20 @@
                                 </select>
                             </div>
                             <div class="flex-1">
-                                <label>单次慢降(秒)</label>
-                                <input type="number" id="timerDownInput" value="4.0" step="0.5" min="1" onchange="syncTimerInputs()">
+                                <label>单次慢降(秒·自记)</label>
+                                <input type="number" id="timerDownInput" value="4.0" step="0.5" min="1" onchange="setEccentricDownSec(this.value); syncTimerInputs();">
                             </div>
                             <div class="flex-1">
-                                <label>撑起爆发(秒)</label>
-                                <input type="number" id="timerUpInput" value="1.0" step="0.5" min="0.5" onchange="syncTimerInputs()">
+                                <label>撑起爆发(秒·自记)</label>
+                                <input type="number" id="timerUpInput" value="1.0" step="0.5" min="0.5" onchange="setEccentricUpSec(this.value); syncTimerInputs();">
+                            </div>
+                            <div class="flex-1">
+                                <label>组间休整(秒·自记)</label>
+                                <input type="number" id="timerRestInput" value="60" min="5" step="5" onchange="setEccentricRestSec(this.value); syncTimerInputs();">
+                            </div>
+                            <div class="flex-1">
+                                <label>就位准备(秒·自记)</label>
+                                <input type="number" id="timerPrepInput" value="10" min="3" step="1" onchange="setEccentricPrepSec(this.value); syncTimerInputs();">
                             </div>
                             <div class="flex-1">
                                 <label>单组次数</label>
@@ -222,7 +238,7 @@
                     </div>
                 </div>
 
-                <!-- 6. 压腿舒筋战钟（10s提前量 + 做功换边全周期每秒读秒） -->
+                <!-- 6. 压腿舒筋战钟（参数自由改自记 + 做功换边全周期每秒读秒） -->
                 <div id="stretch_timer" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--purple-accent);">
                         <div class="card-header">
