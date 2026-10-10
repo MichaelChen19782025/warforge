@@ -32,33 +32,32 @@ function setupTabs() {}
 function switchTab(t) {
     if (typeof hideHudTooltip === 'function') hideHudTooltip();
 
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    const targetBtn = document.querySelector('.tab-btn[data-tab="' + t + '"]');
+    document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+    var targetBtn = document.querySelector('.tab-btn[data-tab="' + t + '"]');
     if (targetBtn) targetBtn.classList.add('active');
 
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    const targetContent = document.getElementById(t);
+    document.querySelectorAll('.tab-content').forEach(function (c) { c.classList.remove('active'); });
+    var targetContent = document.getElementById(t);
     if (targetContent) targetContent.classList.add('active');
 
     document.body.classList.toggle('diary-wide', t === 'diary');
 
     try {
-        // Tab 路由时全面唤醒各子模块根据最新状态刷新控件
         if (t === 'universal_timer' && typeof renderUniversalTimerPanel === 'function') renderUniversalTimerPanel();
         if (t === 'exercise_codex' && typeof renderExerciseCodex === 'function') renderExerciseCodex();
-        if (t === 'analysis' && typeof refreshPromptData === 'function') refreshPromptData();
-        if (t === 'workout_deck' && typeof renderWorkoutQueue === 'function') renderWorkoutQueue();
+        if (t === 'stretch_timer' && typeof resetStretchDisplayUI === 'function') resetStretchDisplayUI();
+        if (t === 'chest_deck' && typeof renderChestDeckPanel === 'function') renderChestDeckPanel();
+        if (t === 'timer' && typeof syncTimerInputs === 'function') syncTimerInputs();
+        if (t === 'hang_timer' && typeof switchHangVariant === 'function') switchHangVariant(data.settings.hangDefaultVariant || 'hang');
         if (t === 'action_quick' && typeof renderActionQuickPanel === 'function') renderActionQuickPanel();
         if (t === 'squat_deck' && typeof renderSquatDeckPanel === 'function') renderSquatDeckPanel();
-        if (t === 'chest_deck' && typeof renderChestDeckPanel === 'function') renderChestDeckPanel();
-        if (t === 'stretch_timer' && typeof resetStretchDisplayUI === 'function') resetStretchDisplayUI();
-        if (t === 'hang_timer' && typeof switchHangVariant === 'function') switchHangVariant(data.settings.hangDefaultVariant || 'hang');
-        if (t === 'timer' && typeof syncTimerInputs === 'function') syncTimerInputs();
+        if (t === 'workout_deck' && typeof renderWorkoutQueue === 'function') renderWorkoutQueue();
+        if (t === 'analysis' && typeof refreshPromptData === 'function') refreshPromptData();
     } catch (e) {
         console.error('switchTab dispatch error:', e);
     }
 
-    const d = document.getElementById('leftDeckPane');
+    var d = document.getElementById('leftDeckPane');
     if (d) d.scrollTop = 0;
 }
 
@@ -89,7 +88,6 @@ async function init() {
     try {
         if (typeof initDexieStorage === 'function') initDexieStorage();
 
-        // 统一自愈：只在完全未定义时才补充出厂默认值，绝不强制覆盖用户已设参数
         const s = data.settings;
         if (s.jogDefaultMinutes === undefined) s.jogDefaultMinutes = 25;
         if (s.jogPrepSec === undefined) s.jogPrepSec = 10;
@@ -142,25 +140,23 @@ async function init() {
         // 顶栏标签构建
         if (typeof renderTopTabs === 'function') renderTopTabs();
 
-        // 移动端字号初始化：默认注入大字号 (+4)
+        // 移动端大字号初始化 (+4)
         const savedDelta = localStorage.getItem('user_font_delta_pref');
         if (typeof applyFontDelta === 'function') {
             applyFontDelta(savedDelta !== null ? parseFloat(savedDelta) : 4);
         }
 
-        // 启动战备授时与提示
         if (typeof startPoliceRealtimeClock === 'function') startPoliceRealtimeClock();
         if (typeof initTacticalHudTooltips === 'function') initTacticalHudTooltips();
         if (typeof renderAiReportList === 'function') renderAiReportList();
         if (typeof renderDutyStatus === 'function') renderDutyStatus();
 
-        // 默认直接进入万能倒计时战位
+        // 默认直接定位至第 1 个战位：万能倒计时
         switchTab('universal_timer');
 
         if (typeof resetStretchDisplayUI === 'function') resetStretchDisplayUI();
         if (typeof switchHangVariant === 'function') switchHangVariant(data.settings.hangDefaultVariant || 'hang');
 
-        // 暗号版本检测：发现新版本提示
         const installedVer = localStorage.getItem('app_installed_version');
         if (installedVer !== APP_BUILD_VERSION) {
             localStorage.setItem('app_installed_version', APP_BUILD_VERSION);
