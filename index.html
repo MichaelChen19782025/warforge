@@ -3,13 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>天罡洗髓·焚糖战阙 // CYBER-MARSHAL GLYCO-WARFORGE PRO</title>
+
+    <!-- 【防死锁核心】：强制注销一切旧版 Service Worker，并清空所有 CacheStorage -->
+    <script>
+        (function() {
+            try {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                        for (var i = 0; i < registrations.length; i++) {
+                            registrations[i].unregister();
+                        }
+                    });
+                }
+                if ('caches' in window) {
+                    caches.keys().then(function(names) {
+                        for (var i = 0; i < names.length; i++) {
+                            caches.delete(names[i]);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.warn('SW/Cache 清理异常', e);
+            }
+        })();
+    </script>
+
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <script src="https://cdn.bootcdn.net/ajax/libs/dexie/3.2.4/dexie.min.js"></script>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/styles.css?v=20261008_V3">
 </head>
 <body>
 
@@ -17,8 +45,8 @@
         <!-- 顶栏指挥台 -->
         <header>
             <div class="header-left">
-                <div class="brand-logo-main" onclick="switchTab('workout_deck')"
-                     data-hud-tip="【气血总参】：点击快速回到即时出征战台。">
+                <div class="brand-logo-main" onclick="switchTab('universal_timer')"
+                     data-hud-tip="【气血总参】：点击快速回到万能专业倒计时战台。">
                     <span>⚡ 天罡洗髓</span>
                 </div>
 
@@ -35,6 +63,7 @@
                     <button class="font-btn" onclick="adjustFontSize(-1)">A-</button>
                     <button class="font-btn" onclick="adjustFontSize(1)">A+</button>
                 </div>
+                <button class="btn btn-outline btn-sm header-action-btn" onclick="forceUpdateApp()" title="强制击穿缓存并重载最新程序">🔄</button>
                 <button class="btn btn-outline btn-sm header-action-btn" onclick="exportBackup()" title="导出备份">📤</button>
                 <button class="btn btn-outline btn-sm header-action-btn" onclick="document.getElementById('importFile').click()" title="导入备份">📥</button>
                 <input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(event)">
@@ -48,19 +77,30 @@
         <main>
             <div class="left-deck" id="leftDeckPane">
 
-                <!-- 1. 靠墙静蹲战位（参数自由改自记 + 每秒读秒 + 徒手/单重/双重） -->
+                <!-- 0. 万能专业倒计时战台（10组预设自记 + 全周期每秒读秒 + 动作说明书联动） -->
+                <div id="universal_timer" class="tab-content">
+                    <div id="universalTimerContainer"></div>
+                </div>
+
+                <!-- 1. 动作法门典籍（Movement Codex 说明书与眼底安全总集） -->
+                <div id="exercise_codex" class="tab-content">
+                    <div class="cyber-card" style="--card-accent: var(--cyan-accent);">
+                        <div class="card-header">
+                            <span>📖 动作法门典籍 · 运动要领与安全禁忌总纲</span>
+                            <span class="badge badge-cyan">动作说明书</span>
+                        </div>
+                        <div id="exerciseCodexContainer"></div>
+                    </div>
+                </div>
+
+                <!-- 2. 靠墙静蹲战位（参数自由改自记 + 每秒读秒 + 徒手/单重/双重） -->
                 <div id="squat_deck" class="tab-content">
                     <div id="squatDeckContainer"></div>
                 </div>
 
-                <!-- 2. 墙角扩胸（参数自由改自记 + 做功换边全程每秒读秒） -->
+                <!-- 3. 墙角扩胸（参数自由改自记 + 做功换边全程每秒读秒） -->
                 <div id="chest_deck" class="tab-content">
                     <div id="chestDeckContainer"></div>
-                </div>
-
-                <!-- 3. 慢跑巡航面板（时长与提前量自记） -->
-                <div id="action_quick" class="tab-content">
-                    <div id="actionQuickContainer"></div>
                 </div>
 
                 <!-- 4. 极限悬挂战钟（提前量自记 + 每秒读秒 + 10阶延时校准补偿） -->
@@ -84,7 +124,6 @@
                             </div>
                         </div>
 
-                        <!-- 战前就位提前量调节 -->
                         <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin:4px 0 6px;" id="hangPrepPresets">
                             <span style="font-size:11px; color:var(--text-muted);">就位准备(自动记忆):</span>
                             <button type="button" class="preset-chip" onclick="setHangPrepDuration(5)">5秒</button>
@@ -271,7 +310,12 @@
                     </div>
                 </div>
 
-                <!-- 7. 即时出征台 -->
+                <!-- 7. 慢跑巡航面板 -->
+                <div id="action_quick" class="tab-content">
+                    <div id="actionQuickContainer"></div>
+                </div>
+
+                <!-- 8. 即时出征台 -->
                 <div id="workout_deck" class="tab-content">
                     <div class="duty-status-banner" id="dutyBanner">
                         <div style="flex:1; min-width:180px;">
@@ -334,7 +378,7 @@
                     </div>
                 </div>
 
-                <!-- 8. 气血中枢 -->
+                <!-- 9. 气血中枢 -->
                 <div id="dashboard" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--amber-accent);">
                         <div class="card-header">
@@ -372,7 +416,7 @@
                     </div>
                 </div>
 
-                <!-- 9. 淬体实录 -->
+                <!-- 10. 淬体实录 -->
                 <div id="log" class="tab-content">
                     <div class="cyber-card">
                         <div class="card-header">
@@ -383,7 +427,7 @@
                     </div>
                 </div>
 
-                <!-- 10. 易筋推演 -->
+                <!-- 11. 易筋推演 -->
                 <div id="analysis" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--cyan-accent);">
                         <div class="card-header"><span>⚡ 智能参谋推演指令生成器</span></div>
@@ -398,7 +442,7 @@
                     </div>
                 </div>
 
-                <!-- 11. 淬体随笔 -->
+                <!-- 12. 淬体随笔 -->
                 <div id="diary" class="tab-content">
                     <div class="cyber-card" style="--card-accent: var(--amber-accent);">
                         <div class="card-header">
@@ -406,14 +450,6 @@
                             <button class="btn btn-sm btn-cyan" onclick="openChatWorkbench()">🧠 AI聊天精修导入</button>
                         </div>
                         <div id="diaryCardList"></div>
-                    </div>
-                </div>
-
-                <!-- 12. 真武秘卷 -->
-                <div id="knowledge" class="tab-content">
-                    <div class="cyber-card">
-                        <div class="card-header"><span>📜 真武秘卷 · 运动控糖与眼底安全总纲</span></div>
-                        <div id="knowledgeList"></div>
                     </div>
                 </div>
 
@@ -444,7 +480,57 @@
         </main>
     </div>
 
-    <!-- 弹窗 1：悬挂脱杠 10 阶延时校准弹层 -->
+    <!-- 弹窗：法门典籍新建/编辑模态窗 -->
+    <div class="modal-overlay" id="exerciseCodexModal" onclick="closeExerciseCodexForm()">
+        <div class="modal-card bottom-sheet-card" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div>
+                    <h3 style="font-size:1.15rem; color:#fff;">📖 法门典籍 · 刊刻立卷</h3>
+                    <div style="font-size:11.5px; color:var(--text-muted); margin-top:2px;">录入运动要领与眼底安全禁忌，规范每一次出征：</div>
+                </div>
+                <button class="close-btn" onclick="closeExerciseCodexForm()">✕</button>
+            </div>
+
+            <input type="hidden" id="codexEditId">
+            <div class="row" style="margin-bottom:6px;">
+                <div style="width:70px;">
+                    <label>图标</label>
+                    <input type="text" id="codexFormIcon" value="⚡" style="text-align:center;">
+                </div>
+                <div class="flex-2">
+                    <label>法门名称 *</label>
+                    <input type="text" id="codexFormName" placeholder="如：靠墙静蹲、波比跳">
+                </div>
+                <div class="flex-1">
+                    <label>功法分类</label>
+                    <input type="text" id="codexFormCategory" placeholder="如：等长抗阻、有氧耐力">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:6px;">
+                <label>动作要领与发力准则 *</label>
+                <textarea id="codexFormDesc" rows="3" placeholder="描述体位角度、重心分布、关节对齐、节奏要点..."></textarea>
+            </div>
+
+            <div class="form-group" style="margin-bottom:6px;">
+                <label style="color:var(--pink-accent);">安全规范与眼底微血管保护禁忌 *</label>
+                <textarea id="codexFormSafety" rows="2" placeholder="严禁闭气憋气！提醒呼吸节奏、心率控制与力竭防范..."></textarea>
+            </div>
+
+            <div class="form-group" style="margin-bottom:12px;">
+                <label>主要做功肌群</label>
+                <input type="text" id="codexFormMuscles" placeholder="如：股四头肌、臀大肌、核心肌群">
+            </div>
+
+            <div style="display:flex; justify-content:space-between; gap:8px;">
+                <button class="btn btn-outline flex-1" onclick="closeExerciseCodexForm()">取消</button>
+                <button class="btn btn-success flex-2" id="codexSaveAndReturnBtn" onclick="saveExerciseCodexItem(true)">💾 刊刻并返回倒计时 ➔</button>
+                <button class="btn btn-primary flex-2" onclick="saveExerciseCodexItem(false)">💾 仅刊刻入卷</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：悬挂脱杠 10 阶延时校准弹层 -->
     <div class="modal-overlay" id="hangLatencyModal" onclick="cancelHangLatencyModal()">
         <div class="modal-card bottom-sheet-card" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -471,7 +557,7 @@
         </div>
     </div>
 
-    <!-- 弹窗 2：引体/悬挂结算战报 -->
+    <!-- 弹窗：引体/悬挂结算战报 -->
     <div class="modal-overlay" id="hangResultModal" onclick="closeHangResultModal(false)">
         <div class="modal-card bottom-sheet-card" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -479,9 +565,7 @@
                 <button class="close-btn" onclick="closeHangResultModal(false)">✕</button>
             </div>
             <div style="text-align:center; padding:6px 0 16px;">
-                <div class="rank-tag-pill" id="hangResultRank">
-                    天罡武圣
-                </div>
+                <div class="rank-tag-pill" id="hangResultRank">天罡武圣</div>
                 <div style="font-size:3.8rem; font-weight:900; color:#ffffff; line-height:1; margin:8px 0;" id="hangResultScore">
                     45<span style="font-size:1.6rem; color:#9aa0a6;">s</span>
                 </div>
@@ -504,17 +588,18 @@
 
     <div id="appToast" class="app-toast"></div>
 
-    <script src="js/state.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/duty.js"></script>
-    <script src="js/storage.js"></script>
-    <script src="js/timer.js"></script>
-    <script src="js/pnf-timer.js"></script>
-    <script src="js/hang-timer.js"></script>
-    <script src="js/quick-action.js"></script>
-    <script src="js/arsenal-queue.js"></script>
-    <script src="js/diary-workbench.js"></script>
-    <script src="js/views.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/state.js?v=20261008_V3"></script>
+    <script src="js/utils.js?v=20261008_V3"></script>
+    <script src="js/duty.js?v=20261008_V3"></script>
+    <script src="js/storage.js?v=20261008_V3"></script>
+    <script src="js/timer.js?v=20261008_V3"></script>
+    <script src="js/pnf-timer.js?v=20261008_V3"></script>
+    <script src="js/hang-timer.js?v=20261008_V3"></script>
+    <script src="js/universal-timer.js?v=20261008_V3"></script>
+    <script src="js/quick-action.js?v=20261008_V3"></script>
+    <script src="js/arsenal-queue.js?v=20261008_V3"></script>
+    <script src="js/diary-workbench.js?v=20261008_V3"></script>
+    <script src="js/views.js?v=20261008_V3"></script>
+    <script src="js/app.js?v=20261008_V3"></script>
 </body>
 </html>
